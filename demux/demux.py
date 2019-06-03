@@ -1,6 +1,5 @@
 from __future__ import absolute_import
 from __future__ import print_function
-import argparse
 import os
 import sys
 import re
@@ -12,6 +11,7 @@ import io
 from Bio.SeqIO.QualityIO import FastqGeneralIterator
 logging.basicConfig(level=logging.INFO)
 
+
 # TODO: Support for samplesheet to do real demuxing
 # TODO: Build adapter fastas dynamically (based on idx length) and run minimap2
 # TODO: un-hardcode this to enable different library types
@@ -22,7 +22,9 @@ trueseq_meta = {"I5": 70,
             }
 
 
+
 def parse_cs(cs_string, index, max_distance):
+    # Parses the CS string of a paf alignment and matches it to the given index using a max Levenshtein distance
     # TODO: Grab the alignment context and do Smith-Waterman,
     #       or do some clever stuff when parsing the cs string
     # PIPEDREAM: Do something big-brained with ONT squigglies
@@ -39,7 +41,9 @@ def parse_cs(cs_string, index, max_distance):
         return False
 
 
+
 def cluster_bc_matches(in_fastq, out_fastq, paf, i5_barcode, i7_barcode, max_distance, debug, count):
+    # Reads input ONT fastq file and clusters adaptor hits to find intact Illumina reads
 
     log = logging.getLogger('demux')
     if debug:
@@ -172,17 +176,3 @@ def write_demuxedfastq(beds, fastq_in, fastq_out):
                         outfqs += "+\n"
                         outfqs += "{}\n".format(qual[bed[1]:bed[2]])
                     oz.stdin.write(outfqs.encode('utf-8'))
-
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Tools to demux I7 and I5 barcodes when sequenced by single-molecules")
-    parser.add_argument('--in_fastq', '-i', help="Input ONT fastq file")
-    parser.add_argument('--out_fastq', '-o', help="Output demux fastq file")
-    parser.add_argument('--paf', '-p', type=str, help="Minimap paf file")
-    parser.add_argument('--i5-barcode', '-i5', type=str, help="i5 barcode sequence")
-    parser.add_argument('--i7-barcode', '-i7', type=str, help="i7 barcode sequence")
-    parser.add_argument('--count', '-c', action='store_true', help="Only do BC counting and not demuxing")
-    parser.add_argument('--max-distance', '-m', default=1, type=int, help="Maximum edit distance for BC matching")
-    parser.add_argument('--debug', '-d', action='store_true', help="Extra commandline output")
-    args = parser.parse_args()
-    cluster_bc_matches(args.in_fastq, args.out_fastq, args.paf,args.i5_barcode,args.i7_barcode, args.max_distance, args.debug, args.count)
