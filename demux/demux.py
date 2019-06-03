@@ -21,8 +21,6 @@ trueseq_meta = {"I5": 70,
                 "I7": 65
             }
 
-
-
 def parse_cs(cs_string, index, max_distance):
     # Parses the CS string of a paf alignment and matches it to the given index using a max Levenshtein distance
     # TODO: Grab the alignment context and do Smith-Waterman,
