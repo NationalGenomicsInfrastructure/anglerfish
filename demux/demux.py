@@ -12,14 +12,6 @@ from Bio.SeqIO.QualityIO import FastqGeneralIterator
 logging.basicConfig(level=logging.INFO)
 
 
-# TODO: Support for samplesheet to do real demuxing
-# TODO: Build adapter fastas dynamically (based on idx length) and run minimap2
-# TODO: un-hardcode this to enable different library types
-trueseq_i5 = "I5"
-trueseq_i7 = "I7"
-trueseq_meta = {"I5": 70,
-                "I7": 65
-            }
 
 def parse_cs(cs_string, index, max_distance):
     # Parses the CS string of a paf alignment and matches it to the given index using a max Levenshtein distance
@@ -35,13 +27,41 @@ def parse_cs(cs_string, index, max_distance):
     if lev.distance(index.lower(), nts) <= max_distance:
         return nts
     else:
-        #log.debug(cs_string)
+        #log.debug(nts)
         return False
 
 
+def run_minimap2(fastq_in, indexfile, output_paf, threads=2):
 
-def cluster_bc_matches(in_fastq, out_fastq, paf, i5_barcode, i7_barcode, max_distance, debug, count):
+    cmd = [
+        "minimap2",
+        "--cs",
+        "-m8",
+        "-k", "10",
+        "-w", "5",
+        "-B1",
+        "-A6",
+        "--dual=no",
+        "-c",
+        "-t", str(threads),
+        "-o", output_paf,
+        indexfile,
+        fastq_in
+    ]
+
+    proc = subprocess.run(cmd, check=True, text=True)
+    return proc.returncode
+
+
+def cluster_bc_matches(in_fastq, out_fastq, paf, adaptor, max_distance, debug, count):
     # Reads input ONT fastq file and clusters adaptor hits to find intact Illumina reads
+    i5_barcode = adaptor.i5_index
+    i7_barcode = adaptor.i7_index
+    i5_len = len(adaptor.get_i5_mask())
+    i7_len = len(adaptor.get_i7_mask())
+    adaptor_name = adaptor.name
+    i5_name = adaptor_name + "_i5"
+    i7_name = adaptor_name + "_i7"
 
     log = logging.getLogger('demux')
     if debug:
@@ -53,7 +73,7 @@ def cluster_bc_matches(in_fastq, out_fastq, paf, i5_barcode, i7_barcode, max_dis
         oneln = p.readline()
         if not oneln.split()[23].startswith("cs:Z"):
             raise UserWarning("Input file was not a valid paf file or did not contain a cs:Z tag")
-        if not oneln.split()[5] in trueseq_meta.keys():
+        if not oneln.split()[5] in [i5_name, i7_name]:
             raise UserWarning("Input paf file does not aligned to a proper adapter sequences")
 
     raw_matches = {} # Raw matches from minimap2
@@ -71,23 +91,22 @@ def cluster_bc_matches(in_fastq, out_fastq, paf, i5_barcode, i7_barcode, max_dis
                          "rstart": int(aln[2]), # start alignment on read
                          "rend": int(aln[3]), # end alignment on read
                          "strand": aln[4],
-                         "cs": aln[23], # cs string
+                         "cs": aln[-1], # cs string
+                         "q": int(aln[11]), # Q score
                          "iseq": None
                         }
             except IndexError:
                 log.debug("Could not find all paf columns: {}".format(aln))
 
-            if int(aln[3]) - int(aln[2]) != int(trueseq_meta[aln[5]]):
-                part_alns += 1
-            else:
-                full_alns += 1
+            if entry["q"] < 10:
+                continue
 
             if aln[0] in raw_matches.keys():
                 raw_matches[aln[0]].append(entry)
             else:
                 raw_matches[aln[0]] = [entry]
 
-    log.debug("full alignments: {}, partial alignments {}".format(full_alns, part_alns))
+    #log.debug("full alignments: {}, partial alignments {}".format(full_alns, part_alns))
     log.info("Searching for adaptor hits")
     index_match = 0
     no_index_match = 0
@@ -95,13 +114,13 @@ def cluster_bc_matches(in_fastq, out_fastq, paf, i5_barcode, i7_barcode, max_dis
         ref_matches = []
 
         for match in matches:
-            if match['adapter'] == trueseq_i5:
+            if match['adapter'] == i5_name and i5_barcode is not None:
                 found_i5 = parse_cs(match['cs'], i5_barcode, max_distance)
                 if found_i5:
                     hit_i5 = match
                     hit_i5['iseq'] = found_i5
 
-            elif match['adapter'] == trueseq_i7:
+            elif match['adapter'] == i7_name:
                 found_i7 = parse_cs(match['cs'], i7_barcode, max_distance)
                 if found_i7:
                     hit_i7 = match
@@ -127,13 +146,13 @@ def cluster_bc_matches(in_fastq, out_fastq, paf, i5_barcode, i7_barcode, max_dis
                 # We have consecutive I7+I5/I5+I7 matches
                 # TODO: Check if these are actually not duplicates somehow, ie. I7+I7
                 obed.append(bed_line)
-                if m2['rstart']-m1['rend'] > 700:
-                    log.debug("suspcious long read in: {}".format(read))
-                    log.debug("{}".format(matches))
-                if m2['rstart']-m1['rend'] < 30:
-                    # TODO: Maybe drop these reads
-                    log.debug("suspcious short read in: {}".format(read))
-                    log.debug("{}".format(matches))
+                #if m2['rstart']-m1['rend'] > 700:
+                #    log.debug("suspcious long read in: {}".format(read))
+                #    log.debug("{}".format(matches))
+                #if m2['rstart']-m1['rend'] < 30:
+                #    # TODO: Maybe drop these reads
+                #    log.debug("suspcious short read in: {}".format(read))
+                #    log.debug("{}".format(matches))
 
             elif m1['iseq'] is not None or m2['iseq'] is not None:
                 pbed.append(bed_line)
@@ -153,6 +172,8 @@ def cluster_bc_matches(in_fastq, out_fastq, paf, i5_barcode, i7_barcode, max_dis
 
 
 def write_demuxedfastq(beds, fastq_in, fastq_out):
+    # Take a set of coordinates in bed format [[seq1, start, end, ..][seq2, ..]]
+    # from over a set of fastq entries in the input files and do extraction.
     # TODO: Can be optimized using pigz or rewritten using python threading
     gz_buf = 131072
     with subprocess.Popen(["gzip", "-c", "-d", fastq_in],
