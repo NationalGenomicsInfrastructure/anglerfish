@@ -6,13 +6,13 @@ from demux.demux import cluster_bc_matches, run_minimap2
 from demux.samplesheet import SampleSheet
 from Bio.SeqIO.QualityIO import FastqGeneralIterator
 logging.basicConfig(level=logging.INFO)
-log = logging.getLogger('angerlfish')
+log = logging.getLogger('anglerfish')
 def run_demux(args):
 
     ss = SampleSheet(args.samplesheet)
     bc_dist = ss.minimum_bc_distance()
-    if args.max_distance > bc_dist:
-        log.error("Edit distance of barcodes in samplesheet are less than {} ({})".format(args.max_distance, bc_dist))
+    if args.max_distance >= bc_dist:
+        log.error("Edit distance of barcodes in samplesheet are less than the minimum specified {}>={}".format(args.max_distance, bc_dist))
         exit()
     log.debug("Samplesheet bc_dist == {}".format(bc_dist))
 
@@ -23,15 +23,11 @@ def run_demux(args):
 
     for sample, adaptor in ss.samplesheet:
         cluster_bc_matches(args.in_fastq, args.out_fastq+"_"+sample+".fastq.gz", "out.paf", adaptor, args.max_distance, args.debug, args.count)
-        #print(sample, adaptor)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Tools to demux I7 and I5 barcodes when sequenced by single-molecules")
     parser.add_argument('--in_fastq', '-i', required=True, help="Input ONT fastq file")
     parser.add_argument('--out_fastq', '-o', help="Output demux fastq file")
-    #parser.add_argument('--paf', '-p', type=str, help="Minimap paf file")
-    #parser.add_argument('--i5-barcode', '-i5', type=str, help="i5 barcode sequence")
-    #parser.add_argument('--i7-barcode', '-i7', type=str, help="i7 barcode sequence")
     parser.add_argument('--samplesheet', '-s', required=True, help="CSV formatted list of samples and barcodes")
     parser.add_argument('--count', '-c', action='store_true', help="Only do BC counting and not demuxing")
     parser.add_argument('--max-distance', '-m', default=1, type=int, help="Maximum edit distance for BC matching")

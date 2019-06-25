@@ -73,8 +73,8 @@ def cluster_bc_matches(in_fastq, out_fastq, paf, adaptor, max_distance, debug, c
         oneln = p.readline()
         if not oneln.split()[23].startswith("cs:Z"):
             raise UserWarning("Input file was not a valid paf file or did not contain a cs:Z tag")
-        if not oneln.split()[5] in [i5_name, i7_name]:
-            raise UserWarning("Input paf file does not aligned to a proper adapter sequences")
+        #if not oneln.split()[5] in [i5_name, i7_name]:
+        #    raise UserWarning("Input paf file does not aligned to a proper adapter sequences")
 
     raw_matches = {} # Raw matches from minimap2
     layout = {} # Sorted and index-annotated I7/I5 matches
@@ -112,7 +112,6 @@ def cluster_bc_matches(in_fastq, out_fastq, paf, adaptor, max_distance, debug, c
     no_index_match = 0
     for read, matches in raw_matches.items():
         ref_matches = []
-
         for match in matches:
             if match['adapter'] == i5_name and i5_barcode is not None:
                 found_i5 = parse_cs(match['cs'], i5_barcode, max_distance)
@@ -142,20 +141,16 @@ def cluster_bc_matches(in_fastq, out_fastq, paf, adaptor, max_distance, debug, c
             m2 = matches[match_i]
             bed_line = [read, m1['rend']+1, m2['rstart']-1, "insert_{}".format(match_i-1), "999", "."]
 
-            if m1['iseq'] is not None and m2['iseq'] is not None:
+            if m1['iseq'] is not None and m2['iseq'] is not None and m1['adapter'] != m2['adapter']:
                 # We have consecutive I7+I5/I5+I7 matches
                 # TODO: Check if these are actually not duplicates somehow, ie. I7+I7
                 obed.append(bed_line)
-                #if m2['rstart']-m1['rend'] > 700:
-                #    log.debug("suspcious long read in: {}".format(read))
-                #    log.debug("{}".format(matches))
-                #if m2['rstart']-m1['rend'] < 30:
-                #    # TODO: Maybe drop these reads
-                #    log.debug("suspcious short read in: {}".format(read))
-                #    log.debug("{}".format(matches))
+            elif i5_barcode is None and ((m1['iseq'] is not None) ^ (m2['iseq'] is not None)):
+                obed.append(bed_line)
 
-            elif m1['iseq'] is not None or m2['iseq'] is not None:
-                pbed.append(bed_line)
+
+            #elif m1['iseq'] is not None or m2['iseq'] is not None:
+            #    pbed.append(bed_line)
 
         if len(obed) > 0:
             out_reads[read] = obed
