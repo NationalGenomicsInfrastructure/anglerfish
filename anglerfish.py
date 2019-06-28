@@ -21,7 +21,7 @@ def run_demux(args):
 
     retcode = run_minimap2(args.in_fastq, "adaptors.fasta", "out.paf")
 
-    for sample, adaptor in ss.samplesheet:
+    for sample, adaptor in ss:
         cluster_bc_matches(args.in_fastq, args.out_fastq+"_"+sample+".fastq.gz", "out.paf", adaptor, args.max_distance, args.debug, args.count)
 
 if __name__ == "__main__":

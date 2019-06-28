@@ -53,8 +53,6 @@ class Adaptor(object):
 
 class SampleSheet(object):
 
-    ## def __iter__(self):
-    ## def __next__(self):
 
     def __init__(self, input_csv):
 
@@ -104,3 +102,8 @@ class SampleSheet(object):
             outstr += ">{}\n{}\n".format(key,seq)
 
         return outstr
+
+    def __iter__(self):
+        return iter(self.samplesheet)
+    def __next__(self):
+        pass

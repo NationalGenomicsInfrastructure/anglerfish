@@ -27,7 +27,6 @@ def parse_cs(cs_string, index, max_distance):
     if lev.distance(index.lower(), nts) <= max_distance:
         return nts
     else:
-        #log.debug(nts)
         return False
 
 
@@ -73,8 +72,8 @@ def cluster_bc_matches(in_fastq, out_fastq, paf, adaptor, max_distance, debug, c
         oneln = p.readline()
         if not oneln.split()[23].startswith("cs:Z"):
             raise UserWarning("Input file was not a valid paf file or did not contain a cs:Z tag")
-        #if not oneln.split()[5] in [i5_name, i7_name]:
-        #    raise UserWarning("Input paf file does not aligned to a proper adapter sequences")
+        if not oneln.split()[5] in [i5_name, i7_name]:
+            raise UserWarning("Input paf file does not aligned to a proper adapter sequences")
 
     raw_matches = {} # Raw matches from minimap2
     layout = {} # Sorted and index-annotated I7/I5 matches
