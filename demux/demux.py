@@ -10,28 +10,28 @@ import subprocess
 import io
 from Bio.SeqIO.QualityIO import FastqGeneralIterator
 logging.basicConfig(level=logging.INFO)
+log = logging.getLogger('demux')
 
 
 
 def parse_cs(cs_string, index, max_distance):
-    # Parses the CS string of a paf alignment and matches it to the given index using a max Levenshtein distance
-    # TODO: Grab the alignment context and do Smith-Waterman,
-    #       or do some clever stuff when parsing the cs string
-    # PIPEDREAM: Do something big-brained with ONT squigglies
-    log = logging.getLogger('demux')
+    """
+    Parses the CS string of a paf alignment and matches it to the given index using a max Levenshtein distance
+    TODO: Grab the alignment context and do Smith-Waterman,
+          or do some clever stuff when parsing the cs string
+    PIPEDREAM: Do something big-brained with ONT squigglies
+    """
     nt = re.compile("\*n([atcg])")
     nts = "".join(re.findall(nt, cs_string))
-    #log.debug("Index search: {}".format(nts))
 
     # Allow for mismatches
-    if lev.distance(index.lower(), nts) <= max_distance:
-        return nts
-    else:
-        return False
+    return lev.distance(index.lower(), nts)
 
 
 def run_minimap2(fastq_in, indexfile, output_paf, threads=2):
-
+    """
+    Runs Minimap2
+    """
     cmd = [
         "minimap2",
         "--cs",
@@ -51,40 +51,19 @@ def run_minimap2(fastq_in, indexfile, output_paf, threads=2):
     proc = subprocess.run(cmd, check=True, text=True)
     return proc.returncode
 
-
-def cluster_bc_matches(in_fastq, out_fastq, paf, adaptor, max_distance, debug, count):
-    # Reads input ONT fastq file and clusters adaptor hits to find intact Illumina reads
-    i5_barcode = adaptor.i5_index
-    i7_barcode = adaptor.i7_index
-    i5_len = len(adaptor.get_i5_mask())
-    i7_len = len(adaptor.get_i7_mask())
-    adaptor_name = adaptor.name
-    i5_name = adaptor_name + "_i5"
-    i7_name = adaptor_name + "_i7"
-
-    log = logging.getLogger('demux')
-    if debug:
-        log.info('Debug mode')
-        log.setLevel(logging.DEBUG)
-
-    # TODO: need to read more than 1 line
-    with open(paf, "r") as p:
-        oneln = p.readline()
-        if not oneln.split()[23].startswith("cs:Z"):
-            raise UserWarning("Input file was not a valid paf file or did not contain a cs:Z tag")
-        if not oneln.split()[5] in [i5_name, i7_name]:
-            raise UserWarning("Input paf file does not aligned to a proper adapter sequences")
-
-    raw_matches = {} # Raw matches from minimap2
-    layout = {} # Sorted and index-annotated I7/I5 matches
-    full_alns = 0 # DEBUG: all of adapter was mapped
-    part_alns = 0 # DEBUG: partial mapping
-    log.info("Parsing paf file")
-    with open(paf, "r") as p:
-        for line in p:
-            aln = line.split()
-            # TODO account for s2 tag. Or fiddle with minimap2 parameters
+#from memory_profiler import profile
+#@profile
+def parse_paf_lines(paf, min_qual=10):
+    """
+    Read and parse one paf alignment lines.
+    Returns a dict with the import values for later use
+    """
+    entries = {}
+    with open(paf, "r") as paf:
+        for paf_line in paf:
+            aln = paf_line.split()
             try:
+                # TODO: objectify this
                 entry = {"adapter": aln[5],
                          "rlen": int(aln[1]), # read length
                          "rstart": int(aln[2]), # start alignment on read
@@ -92,77 +71,110 @@ def cluster_bc_matches(in_fastq, out_fastq, paf, adaptor, max_distance, debug, c
                          "strand": aln[4],
                          "cs": aln[-1], # cs string
                          "q": int(aln[11]), # Q score
-                         "iseq": None
+                         "iseq": None,
+                         "sample": None
                         }
+                read = aln[0]
             except IndexError:
-                log.debug("Could not find all paf columns: {}".format(aln))
-
-            if entry["q"] < 10:
+                log.debug("Could not find all paf columns: {}".format(read))
                 continue
 
-            if aln[0] in raw_matches.keys():
-                raw_matches[aln[0]].append(entry)
+            if entry["q"] < min_qual:
+                log.debug("Low quality alignment: {}".format(read))
+                continue
+
+            if read in entries.keys():
+                entries[read].append(entry)
             else:
-                raw_matches[aln[0]] = [entry]
+                entries[read] = [entry]
 
-    #log.debug("full alignments: {}, partial alignments {}".format(full_alns, part_alns))
+    return entries
+
+
+def layout_matches(i5_name, i7_name, paf_entries):
+    """
+    Search the parsed paf alignments and layout possible Illumina library fragments
+    Returns dicts:
+        - fragments. Reads with one I7 and one I5
+        - singletons. Reads with that only match either I5 or I7 adaptors
+        - concats. Concatenated fragments. Fragments with several alternating I7, I5 matches
+        - unknowns. Any other reads
+    """
+
     log.info("Searching for adaptor hits")
-    index_match = 0
-    no_index_match = 0
-    for read, matches in raw_matches.items():
-        ref_matches = []
-        for match in matches:
-            if match['adapter'] == i5_name and i5_barcode is not None:
-                found_i5 = parse_cs(match['cs'], i5_barcode, max_distance)
-                if found_i5:
-                    hit_i5 = match
-                    hit_i5['iseq'] = found_i5
-
-            elif match['adapter'] == i7_name:
-                found_i7 = parse_cs(match['cs'], i7_barcode, max_distance)
-                if found_i7:
-                    hit_i7 = match
-                    hit_i7['iseq'] = found_i7
-
-            ref_matches.append(match)
-
-        ref_matches = sorted(ref_matches,key=lambda l:l['rstart'])
-        layout[read] = ref_matches
-
-
-    # Traverse layout and find intact Illumina reads.
-    log.info("Finding Illumina reads")
-    out_reads = {}; part_reads = {}
-    for read, matches in layout.items():
-        obed = []; pbed = []
-        for match_i in range(1, len(matches), 2):
-            m1 = matches[match_i-1]
-            m2 = matches[match_i]
-            bed_line = [read, m1['rend']+1, m2['rstart']-1, "insert_{}".format(match_i-1), "999", "."]
-
-            if m1['iseq'] is not None and m2['iseq'] is not None and m1['adapter'] != m2['adapter']:
-                # We have consecutive I7+I5/I5+I7 matches
-                # TODO: Check if these are actually not duplicates somehow, ie. I7+I7
-                obed.append(bed_line)
-            elif i5_barcode is None and ((m1['iseq'] is not None) ^ (m2['iseq'] is not None)):
-                obed.append(bed_line)
+    fragments = {}; singletons = {}; concats = {}; unknowns = {}
+    for read, entry_list in paf_entries.items():
+        sorted_entries = []
+        for k in range(len(entry_list)-1):
+            entry_i = entry_list[k]; entry_j = entry_list[k+1]
+            if entry_i['adapter'] != entry_j['adapter'] and \
+                (entry_i['adapter'] == i5_name and entry_j['adapter'] == i7_name) or \
+                (entry_j['adapter'] == i5_name and entry_i['adapter'] == i7_name):
+                if entry_i in sorted_entries:
+                    sorted_entries.append(entry_j)
+                else:
+                    sorted_entries.extend([entry_i, entry_j])
+        if len(entry_list) == 1:
+            singletons[read] = entry_list
+        elif len(sorted_entries) == 2:
+            fragments[read] = sorted(sorted_entries,key=lambda l:l['rstart'])
+        elif len(sorted_entries) > 2:
+            concats[read] = sorted(sorted_entries,key=lambda l:l['rstart'])
+        else:
+            unknowns[read] = entry_list
+        #TODO: add minimum insert size
+    return (fragments, singletons, concats, unknowns)
 
 
-            #elif m1['iseq'] is not None or m2['iseq'] is not None:
-            #    pbed.append(bed_line)
+def cluster_matches(sample_adaptor, adaptor_name, matches, max_distance):
 
-        if len(obed) > 0:
-            out_reads[read] = obed
-        if len(pbed) > 0:
-            part_reads[read] = pbed
+    # Only illumina fragments
+    matched = {}; matched_bed = []; unmatched = {}
+    for read, alignments in matches.items():
 
-    for read, bed in out_reads.items():
-        log.debug("\t".join(str(x) for x in bed))
-    log.info("demuxed reads {}".format(len(out_reads)))
-    log.info("Reads with missing adaptor {}".format(len(part_reads)))
+        i5 = False
+        i7 = False
+        if alignments[0]['adapter'][-2:] == 'i5' and alignments[1]['adapter'][-2:] == 'i7':
+            i5 = alignments[0]
+            i7 = alignments[1]
+        elif alignments[1]['adapter'][-2:] == 'i5' and alignments[0]['adapter'][-2:] == 'i7':
+            i5 = alignments[1]
+            i7 = alignments[0]
+        else:
+            log.debug("Read has no valid illumina fragment")
+            continue
 
-    if not count:
-        write_demuxedfastq(out_reads, in_fastq, out_fastq)
+        dists = []
+        for sample, adaptor in sample_adaptor:
+            try:
+                d1 = parse_cs(i5['cs'], adaptor.i5_index, max_distance)
+            except AttributeError:
+                d1 = 0 # presumably there it's single index
+            d2 = parse_cs(i7['cs'], adaptor.i7_index, max_distance)
+            dists.append(d1+d2)
+
+        index_min = min(range(len(dists)), key=dists.__getitem__)
+        # Test if two samples in the sheet is equidistant to the i5/i7
+        if len([i for i, j in enumerate(dists) if j==dists[index_min]]) > 1:
+            log.debug("Ambiguous alignment, skipping")
+            unmatched[read] = alignments
+            continue
+        if dists[index_min] > max_distance:
+            log.debug("No match")
+            unmatched[read] = alignments
+            continue
+
+        start_insert = min(i5['rend'],i7['rend'])
+        end_insert = max(i7['rstart'],i5['rstart'])
+        if end_insert - start_insert < 10:
+            log.debug("Erroneous / overlapping adaptor matches")
+            unmatched[read] = alignments
+            continue
+
+        matched[read] = alignments
+        matched_bed.append([read, start_insert, end_insert, sample_adaptor[index_min][0], "999", "."])
+    return matched_bed
+
 
 
 def write_demuxedfastq(beds, fastq_in, fastq_out):
@@ -183,6 +195,7 @@ def write_demuxedfastq(beds, fastq_in, fastq_out):
                         continue
                     outfqs = ""
                     for bed in beds[new_title[0]]:
+
                         new_title[0] += "_"+bed[3]
                         outfqs += "@{}\n".format(" ".join(new_title))
                         outfqs += "{}\n".format(seq[bed[1]:bed[2]])

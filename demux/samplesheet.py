@@ -20,7 +20,7 @@ adaptors = {
     "nextera_dual": {
                 "i5": ["AATGATACGGCGACCACCGAGATCTACAC",True,"GTCTCGTGGGCTCGG"],
                 "i7": ["CAAGCAGAAGACGGCATACGAGAT",True,"ATCTCGTATGCCGTCTTCTGCTTG"]
-    }
+    },
 }
 class Adaptor(object):
 
