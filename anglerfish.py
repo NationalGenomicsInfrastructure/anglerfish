@@ -4,7 +4,7 @@ import argparse
 import logging
 import sys
 from itertools import groupby
-from demux.demux import run_minimap2, parse_paf_lines, layout_matches, cluster_matches, write_demuxedfastq
+from demux.demux import run_minimap2, parse_paf_lines, layout_matches, cluster_matches, write_demuxedfastq, run_fastqc
 from demux.samplesheet import SampleSheet
 from Bio.SeqIO.QualityIO import FastqGeneralIterator
 logging.basicConfig(level=logging.INFO)
@@ -33,14 +33,18 @@ def run_demux(args):
         adaptors_sorted[adaptor.name].append((sample, adaptor))
 
     paf_entries = parse_paf_lines("out.paf")
+    out_fastqs = []
     for adaptor in adaptor_set:
         fragments, singletons, concats, unknowns = layout_matches(adaptor+"_i5",adaptor+"_i7",paf_entries)
         matches = cluster_matches(adaptors_sorted[adaptor], adaptor, fragments, args.max_distance)
         print(adaptor, len(fragments) ,len(singletons),len(concats), len(unknowns))
         for k, v in groupby(sorted(matches,key=lambda x: x[3]), key=lambda y: y[3]):
+            fq_name = k+".fastq.gz"
+            out_fastqs.append(fq_name)
             sample_dict = {i[0]: [i] for i in v}
-            write_demuxedfastq(sample_dict, args.in_fastq, k+".fastq.gz")
+            write_demuxedfastq(sample_dict, args.in_fastq, fq_name)
 
+    fastqc = run_fastqc(out_fastqs)
 
 
 if __name__ == "__main__":

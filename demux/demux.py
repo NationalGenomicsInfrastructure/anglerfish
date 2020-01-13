@@ -27,6 +27,31 @@ def parse_cs(cs_string, index, max_distance):
     # Allow for mismatches
     return lev.distance(index.lower(), nts)
 
+def run_fastqc(fastqs, threads=2):
+    """
+    Runs fastqc + multiqc
+    """
+    if not os.path.exists("fastqc"):
+        os.mkdir("fastqc")
+    if not os.path.exists("multiqc"):
+        os.mkdir("multiqc")
+    cmd1 = [
+        "fastqc",
+        "-q",
+        "-o", "fastqc/"
+    ]
+    cmd1.extend(fastqs)
+    proc1 = subprocess.run(cmd1, check=True, text=True)
+    cmd2 = [
+        "multiqc",
+        "-i", "anglerfish_results",
+        "-o", "multiqc/",
+        "-m", "fastqc",
+        "-f",
+        "fastqc/"
+    ]
+    proc2 = subprocess.run(cmd2, check=True, text=True)
+    return proc1.returncode + proc2.returncode
 
 def run_minimap2(fastq_in, indexfile, output_paf, threads=2):
     """
