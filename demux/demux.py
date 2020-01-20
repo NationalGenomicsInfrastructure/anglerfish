@@ -27,7 +27,7 @@ def parse_cs(cs_string, index, max_distance):
     # Allow for mismatches
     return lev.distance(index.lower(), nts)
 
-def run_fastqc(fastqs, threads=2):
+def run_fastqc(fastqs, threads):
     """
     Runs fastqc + multiqc
     """
@@ -38,6 +38,7 @@ def run_fastqc(fastqs, threads=2):
     cmd1 = [
         "fastqc",
         "-q",
+        "-t", str(threads),
         "-o", "fastqc/"
     ]
     cmd1.extend(fastqs)
@@ -53,7 +54,7 @@ def run_fastqc(fastqs, threads=2):
     proc2 = subprocess.run(cmd2, check=True, text=True)
     return proc1.returncode + proc2.returncode
 
-def run_minimap2(fastq_in, indexfile, output_paf, threads=2):
+def run_minimap2(fastq_in, indexfile, output_paf, threads):
     """
     Runs Minimap2
     """
@@ -126,7 +127,7 @@ def layout_matches(i5_name, i7_name, paf_entries):
         - unknowns. Any other reads
     """
 
-    log.info("Searching for adaptor hits")
+    log.info(" Searching for adaptor hits")
     fragments = {}; singletons = {}; concats = {}; unknowns = {}
     for read, entry_list in paf_entries.items():
         sorted_entries = []
@@ -166,7 +167,7 @@ def cluster_matches(sample_adaptor, adaptor_name, matches, max_distance):
             i5 = alignments[1]
             i7 = alignments[0]
         else:
-            log.debug("Read has no valid illumina fragment")
+            log.debug(" Read has no valid illumina fragment")
             continue
 
         dists = []
@@ -181,18 +182,18 @@ def cluster_matches(sample_adaptor, adaptor_name, matches, max_distance):
         index_min = min(range(len(dists)), key=dists.__getitem__)
         # Test if two samples in the sheet is equidistant to the i5/i7
         if len([i for i, j in enumerate(dists) if j==dists[index_min]]) > 1:
-            log.debug("Ambiguous alignment, skipping")
+            log.debug(" Ambiguous alignment, skipping")
             unmatched[read] = alignments
             continue
         if dists[index_min] > max_distance:
-            log.debug("No match")
+            log.debug(" No match")
             unmatched[read] = alignments
             continue
 
         start_insert = min(i5['rend'],i7['rend'])
         end_insert = max(i7['rstart'],i5['rstart'])
         if end_insert - start_insert < 10:
-            log.debug("Erroneous / overlapping adaptor matches")
+            log.debug(" Erroneous / overlapping adaptor matches")
             unmatched[read] = alignments
             continue
 
