@@ -1,8 +1,10 @@
+#!/usr/bin/env python
 from __future__ import absolute_import
 from __future__ import print_function
 import argparse
 import logging
 import sys
+import os
 from itertools import groupby
 from demux.demux import run_minimap2, parse_paf_lines, layout_matches, cluster_matches, write_demuxedfastq, run_fastqc
 from demux.samplesheet import SampleSheet
@@ -13,6 +15,9 @@ log = logging.getLogger('anglerfish')
 
 def run_demux(args):
 
+    adaptor_path = os.path.join(args.out_fastq,"adaptors.fasta")
+    aln_path = os.path.join(args.out_fastq,"out.paf")
+
     ss = SampleSheet(args.samplesheet)
     bc_dist = ss.minimum_bc_distance()
     if args.max_distance >= bc_dist:
@@ -21,9 +26,9 @@ def run_demux(args):
     log.debug("Samplesheet bc_dist == {}".format(bc_dist))
 
     # TODO: split into several adaptor files and run minimap more than once
-    with open("adaptors.fasta", "w") as f:
+    with open(adaptor_path, "w") as f:
         f.write(ss.get_fastastring())
-    retcode = run_minimap2(args.in_fastq, "adaptors.fasta", "out.paf", args.threads)
+    retcode = run_minimap2(args.in_fastq, adaptor_path, aln_path, args.threads)
 
     # Sort the adaptors by type and size
     adaptors_t = [adaptor.name for sample, adaptor in ss]
@@ -32,7 +37,7 @@ def run_demux(args):
     for sample, adaptor in ss:
         adaptors_sorted[adaptor.name].append((sample, adaptor))
 
-    paf_entries = parse_paf_lines("out.paf")
+    paf_entries = parse_paf_lines(aln_path)
     out_fastqs = []
     for adaptor in adaptor_set:
         fragments, singletons, concats, unknowns = layout_matches(adaptor+"_i5",adaptor+"_i7",paf_entries)
@@ -47,26 +52,29 @@ def run_demux(args):
         log.info(" sample_name\t#reads")
         if not args.skip_demux:
             for k, v in groupby(sorted(matches,key=lambda x: x[3]), key=lambda y: y[3]):
-                fq_name = k+".fastq.gz"
+                fq_name = os.path.join(args.out_fastq, k+".fastq.gz")
                 out_fastqs.append(fq_name)
                 sample_dict = {i[0]: [i] for i in v}
                 log.info(" {}\t{}".format(k, len(sample_dict.keys())))
                 write_demuxedfastq(sample_dict, args.in_fastq, fq_name)
 
     if not args.skip_fastqc and not args.skip_demux:
-        fastqc = run_fastqc(out_fastqs, args.threads)
+        fastqc = run_fastqc(out_fastqs, args.out_fastq, args.threads)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Tools to demux I7 and I5 barcodes when sequenced by single-molecules')
     parser.add_argument('--in_fastq', '-i', required=True, help='Input ONT fastq file')
-    parser.add_argument('--out_fastq', '-o', help='Output demux fastq file')
+    parser.add_argument('--out_fastq', '-o', default='.', help='Analysis output folder (default: Current dir)')
     parser.add_argument('--samplesheet', '-s', required=True, help='CSV formatted list of samples and barcodes')
-    parser.add_argument('--threads', '-t', default=4, help='Number of threads to use')
+    parser.add_argument('--threads', '-t', default=4, help='Number of threads to use (default: 4)')
     parser.add_argument('--skip_demux', '-c', action='store_true', help='Only do BC counting and not demuxing')
     parser.add_argument('--skip_fastqc', '-f', action='store_true', help='After demuxing, skip running FastQC+MultiQC')
-    parser.add_argument('--max-distance', '-m', default=2, type=int, help='Maximum edit distance for BC matching')
+    parser.add_argument('--max-distance', '-m', default=2, type=int, help='Maximum edit distance for BC matching (default: 2)')
     parser.add_argument('--debug', '-d', action='store_true', help='Extra commandline output')
     args = parser.parse_args()
+    args.out_fastq = os.path.abspath(args.out_fastq)
+    args.in_fastq = os.path.abspath(args.in_fastq)
+    args.samplesheet = os.path.abspath(args.samplesheet)
     # TODO: input validation
     run_demux(args)
