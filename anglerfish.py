@@ -40,25 +40,30 @@ def run_demux(args):
 
     paf_entries = parse_paf_lines(aln_path)
     out_fastqs = []
+    stats = [args.out_fastq, "=================",""]
     for adaptor in adaptor_set:
         fragments, singletons, concats, unknowns = layout_matches(adaptor+"_i5",adaptor+"_i7",paf_entries)
         total = len(fragments)+len(singletons)+len(concats)+len(unknowns)
-        log.info(" "+adaptor+" -- ")
-        log.info(" {}\treads matching both I7 and I5 adaptor ({:.2f}%)".format(len(fragments), (len(fragments)/float(total)*100)))
-        log.info(" {}\treads matching only I7 or I5 adaptor ({:.2f}%)".format(len(singletons), (len(singletons)/float(total)*100)))
-        log.info(" {}\treads matching multiple I7/I5 adaptor pairs ({:.2f}%)".format(len(concats), (len(concats)/float(total)*100)))
-        log.info(" {}\treads with uncategorized matches ({:.2f}%)".format(len(unknowns), (len(unknowns)/float(total)*100)))
+        stats.append(adaptor+":")
+        stats.append("{}\treads matching both I7 and I5 adaptor ({:.2f}%)".format(len(fragments), (len(fragments)/float(total)*100)))
+        stats.append("{}\treads matching only I7 or I5 adaptor ({:.2f}%)".format(len(singletons), (len(singletons)/float(total)*100)))
+        stats.append("{}\treads matching multiple I7/I5 adaptor pairs ({:.2f}%)".format(len(concats), (len(concats)/float(total)*100)))
+        stats.append("{}\treads with uncategorized matches ({:.2f}%)".format(len(unknowns), (len(unknowns)/float(total)*100)))
         matches = cluster_matches(adaptors_sorted[adaptor], adaptor, fragments, args.max_distance)
-        log.info("")
-        log.info(" sample_name\t#reads")
+        stats.append("")
+        stats.append("sample_name\t#reads")
         if not args.skip_demux:
             for k, v in groupby(sorted(matches,key=lambda x: x[3]), key=lambda y: y[3]):
                 fq_name = os.path.join(args.out_fastq, k+".fastq.gz")
                 out_fastqs.append(fq_name)
                 sample_dict = {i[0]: [i] for i in v}
-                log.info(" {}\t{}".format(k, len(sample_dict.keys())))
+                stats.append("{}\t{}".format(k, len(sample_dict.keys())))
                 write_demuxedfastq(sample_dict, args.in_fastq, fq_name)
 
+    with open(os.path.join(args.out_fastq,"anglerfish_stats.txt"), "w") as f:
+        for i in stats:
+            f.write(i+"\n")
+            print(i)
     if not args.skip_fastqc and not args.skip_demux:
         fastqc = run_fastqc(out_fastqs, args.out_fastq, args.threads)
 
