@@ -5,6 +5,7 @@ import argparse
 import logging
 import sys
 import os
+from datetime import datetime as dt
 from itertools import groupby
 from demux.demux import run_minimap2, parse_paf_lines, layout_matches, cluster_matches, write_demuxedfastq, run_fastqc
 from demux.samplesheet import SampleSheet
@@ -17,7 +18,7 @@ def run_demux(args):
 
     adaptor_path = os.path.join(args.out_fastq,"adaptors.fasta")
     aln_path = os.path.join(args.out_fastq,"out.paf")
-
+    os.mkdir(args.out_fastq)
     ss = SampleSheet(args.samplesheet)
     bc_dist = ss.minimum_bc_distance()
     if args.max_distance >= bc_dist:
@@ -73,7 +74,12 @@ if __name__ == "__main__":
     parser.add_argument('--max-distance', '-m', default=2, type=int, help='Maximum edit distance for BC matching (default: 2)')
     parser.add_argument('--debug', '-d', action='store_true', help='Extra commandline output')
     args = parser.parse_args()
-    args.out_fastq = os.path.abspath(args.out_fastq)
+    utcnow = dt.utcnow()
+    runname = utcnow.strftime("anglerfish_%Y_%m_%d_%H%M%S")
+    assert os.path.exists(args.out_fastq)
+    assert os.path.exists(args.in_fastq)
+    assert os.path.exists(args.samplesheet)
+    args.out_fastq = os.path.join(os.path.abspath(args.out_fastq),runname)
     args.in_fastq = os.path.abspath(args.in_fastq)
     args.samplesheet = os.path.abspath(args.samplesheet)
     # TODO: input validation
