@@ -34,7 +34,7 @@ def run_demux(args):
         f.write(ss.get_fastastring())
     retcode = run_minimap2(args.in_fastq, adaptor_path, aln_path, args.threads)
 
-    # Quick line count in input fastqfile
+    # Easy line count in input fastqfile
     fq_entries = 0
     with gzip.open(args.in_fastq, 'rb') as f:
         for i in f:
@@ -57,10 +57,10 @@ def run_demux(args):
         stats.append(adaptor+":")
         stats.append("{}\tinput reads".format(fq_entries))
         stats.append("{}\treads aligning to adaptor sequences ({:.2f}%)".format(total, (total/float(fq_entries)*100)))
-        stats.append("{}\treads matching both I7 and I5 adaptor ({:.2f}%)".format(len(fragments), (len(fragments)/float(total)*100)))
-        stats.append("{}\treads matching only I7 or I5 adaptor ({:.2f}%)".format(len(singletons), (len(singletons)/float(total)*100)))
-        stats.append("{}\treads matching multiple I7/I5 adaptor pairs ({:.2f}%)".format(len(concats), (len(concats)/float(total)*100)))
-        stats.append("{}\treads with uncategorized alignments ({:.2f}%)".format(len(unknowns), (len(unknowns)/float(total)*100)))
+        stats.append("{}\taligned reads matching both I7 and I5 adaptor ({:.2f}%)".format(len(fragments), (len(fragments)/float(total)*100)))
+        stats.append("{}\taligned reads matching only I7 or I5 adaptor ({:.2f}%)".format(len(singletons), (len(singletons)/float(total)*100)))
+        stats.append("{}\taligned reads matching multiple I7/I5 adaptor pairs ({:.2f}%)".format(len(concats), (len(concats)/float(total)*100)))
+        stats.append("{}\taligned reads with uncategorized alignments ({:.2f}%)".format(len(unknowns), (len(unknowns)/float(total)*100)))
         matches = cluster_matches(adaptors_sorted[adaptor], adaptor, fragments, args.max_distance)
         stats.append("")
         stats.append("sample_name\t#reads")
