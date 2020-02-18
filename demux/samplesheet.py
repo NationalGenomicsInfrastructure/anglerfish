@@ -84,9 +84,13 @@ class SampleSheet(object):
             else:
                 testset.append(adaptor.i7_index)
 
+
         distances=[]
-        for a, b in [i for i in combinations(testset, 2)]:
-            distances.append(lev.distance(a,b))
+        if len(testset) == 1:
+            distances = [len(testset[0])]
+        else:
+            for a, b in [i for i in combinations(testset, 2)]:
+                distances.append(lev.distance(a,b))
 
         return min(distances)
 
