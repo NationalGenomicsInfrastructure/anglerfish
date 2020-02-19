@@ -15,6 +15,8 @@ contamination, library insert sizes and so on.
 
 ### Requirements
 
+* Python3 (3.6)
+
 Python modules:
 
 * biopython v. 1.70
@@ -86,6 +88,8 @@ anglerfish.py -i /path/to/ONTreads.fastq.gz -o /path/to/samples.csv
 ### Optional
 
 ```
+--out_fastq OUT_FASTQ, -o OUT_FASTQ
+                      Analysis output folder (default: Current dir)
 --samplesheet SAMPLESHEET, -s SAMPLESHEET
                       CSV formatted list of samples and barcodes
 --threads THREADS, -t THREADS
@@ -95,3 +99,12 @@ anglerfish.py -i /path/to/ONTreads.fastq.gz -o /path/to/samples.csv
 --max-distance MAX_DISTANCE, -m MAX_DISTANCE
                       Maximum edit distance for BC matching (default: 2)
 ```
+
+### Output files
+
+In folder `anglerfish_????_??_??_?????/`
+
+* `*.fastq.gz` Demultuplexed reads (if any)
+* `anglerfish_stats.txt` Barcode statistics from anglerfish run
+* `fastqc/` raw output from fastqc (if run)
+* `multiqc/anglerfish_results_multiqc_report.html` Summary of demultiplexed reads
