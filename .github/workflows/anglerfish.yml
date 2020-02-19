@@ -9,15 +9,7 @@ jobs:
       matrix:
         python-version: [3.6, 3.7]
 
-    # Check out code
     - uses: actions/checkout@v1
-
-    # Set up Python
-    #- name: Set up Python ${{ matrix.python-version }}
-    #  uses: actions/setup-python@v1
-    #  with:
-    #    python-version: ${{ matrix.python-version }}
-
     - uses: goanpeca/setup-miniconda@v1
       with:
          activate-environment: anaconda-client-env
@@ -25,7 +17,6 @@ jobs:
          python-version: ${{ matrix.python-version }}
          auto-activate-base: false
 
-    # Install Anglerfish
     - name: Install Anglerfish
       run: python setup.py install
 
