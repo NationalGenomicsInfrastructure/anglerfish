@@ -7,9 +7,10 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.6, 3.7]
+        python-version: [3.6]
 
     steps:
+      # Checkout code and install miniconda + environment
       - uses: actions/checkout@v1
       - uses: goanpeca/setup-miniconda@v1
         with:
@@ -18,10 +19,17 @@ jobs:
            python-version: ${{ matrix.python-version }}
            auto-activate-base: false
 
+      # Install Anglerfish
       - shell: bash -l {0}
         name: Install Anglerfish
         run: python setup.py install
 
+      # Run anglerfish.py --help
       - shell: bash -l {0}
         name: Test anglerfish.py
         run: anglerfish.py --help
+
+      # Run anglerfish using test data
+      - shell: bash -l {0}
+        name: Run anglerfish.py with test data
+        run: anglerfish.py -i test/BC18_P14351_1001.fastq.gz -s test/samples.csv
