@@ -18,8 +18,10 @@ jobs:
            python-version: ${{ matrix.python-version }}
            auto-activate-base: false
 
-      - name: Install Anglerfish
+      - shell: bash -l {0}
+        name: Install Anglerfish
         run: python setup.py install
 
-      - name: Test anglerfish.py
+      - shell: bash -l {0}
+        name: Test anglerfish.py
         run: anglerfish.py --help
