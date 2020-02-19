@@ -1,4 +1,4 @@
-name: "Anglerfish"
+name: Anglerfish
 on: [push, pull_request]
 
 jobs:
@@ -9,16 +9,17 @@ jobs:
       matrix:
         python-version: [3.6, 3.7]
 
-    - uses: actions/checkout@v1
-    - uses: goanpeca/setup-miniconda@v1
-      with:
-         activate-environment: anaconda-client-env
-         environment-file: environment.yml
-         python-version: ${{ matrix.python-version }}
-         auto-activate-base: false
+    steps:
+      - uses: actions/checkout@v1
+      - uses: goanpeca/setup-miniconda@v1
+        with:
+           activate-environment: anaconda-client-env
+           environment-file: environment.yml
+           python-version: ${{ matrix.python-version }}
+           auto-activate-base: false
 
-    - name: Install Anglerfish
-      run: python setup.py install
+      - name: Install Anglerfish
+        run: python setup.py install
 
-    - name: Test anglerfish.py
-      run: anglerfish.py --help
+      - name: Test anglerfish.py
+        run: anglerfish.py --help
