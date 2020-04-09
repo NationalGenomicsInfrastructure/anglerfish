@@ -2,6 +2,7 @@ from __future__ import absolute_import
 from __future__ import print_function
 import csv
 import Levenshtein as lev
+import os
 from itertools import combinations
 
 adaptors = {
@@ -57,7 +58,7 @@ class SampleSheet(object):
     def __init__(self, input_csv):
 
         # Read samplesheet in format:
-        # sample_name, adaptors, i7_index, i5_index
+        # sample_name, adaptors, i7_index(-i5_index), fastq_path
 
         self.samplesheet = []
         try:
@@ -65,11 +66,16 @@ class SampleSheet(object):
             dialect = csv.Sniffer().sniff(csvfile.readline(), [',',';','\t'])
             csvfile.seek(0)
             data = csv.DictReader(csvfile,
-                fieldnames=['sample_name', 'adaptors', 'i7_index', 'i5_index'], dialect=dialect)
+                fieldnames=['sample_name', 'adaptors', 'index', 'fastq_path'], dialect=dialect)
             for row in data:
                 if row['adaptors'] not in adaptors:
                     raise UserWarning("'{}' not in the list of valid adaptors: {}".format(row['adaptors'],adaptors.keys()))
-                self.samplesheet.append((row['sample_name'], Adaptor(row['adaptors'], row['i7_index'], row['i5_index'])))
+                i7i5 = row["index"].split("-")
+                i7 = i7i5[0]; i5 = None
+                if len(i7i5) > 1:
+                    i5 = i7i5[1]
+                assert os.path.exists(row['fastq_path']) == 1
+                self.samplesheet.append((row['sample_name'], Adaptor(row['adaptors'], i7, i5),row['fastq_path']))
         except:
             raise
         finally:
@@ -78,7 +84,7 @@ class SampleSheet(object):
     def minimum_bc_distance(self):
 
         testset = []
-        for sample, adaptor in self.samplesheet:
+        for sample, adaptor, fastq in self.samplesheet:
             if adaptor.i5_index is not None:
                 testset.append(adaptor.i5_index+adaptor.i7_index)
             else:
@@ -94,12 +100,15 @@ class SampleSheet(object):
 
         return min(distances)
 
-    def get_fastastring(self):
+    def get_fastastring(self, adaptor_name=None):
 
         fastas = {}
-        for sample, adaptor in self.samplesheet:
-            fastas[adaptor.name+"_i7"] = adaptor.get_i7_mask()
-            fastas[adaptor.name+"_i5"] = adaptor.get_i5_mask()
+        for sample, adaptor, fastq in self.samplesheet:
+            if adaptor.name == adaptor_name or adaptor_name is None:
+                fastas[adaptor.name+"_i7"] = adaptor.get_i7_mask()
+                fastas[adaptor.name+"_i5"] = adaptor.get_i5_mask()
+
+        assert len(fastas) > 0
 
         outstr = ""
         for key, seq in fastas.items():

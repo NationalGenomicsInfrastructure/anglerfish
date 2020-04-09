@@ -17,8 +17,6 @@ log = logging.getLogger('anglerfish')
 
 def run_demux(args):
 
-    adaptor_path = os.path.join(args.out_fastq,"adaptors.fasta")
-    aln_path = os.path.join(args.out_fastq,"out.paf")
     os.mkdir(args.out_fastq)
     ss = SampleSheet(args.samplesheet)
     version = pkg_resources.get_distribution("anglerfish").version
@@ -29,39 +27,51 @@ def run_demux(args):
         exit()
     log.debug("Samplesheet bc_dist == {}".format(bc_dist))
 
-    # TODO: split into several adaptor files and run minimap more than once
-    with open(adaptor_path, "w") as f:
-        f.write(ss.get_fastastring())
-    retcode = run_minimap2(args.in_fastq, adaptor_path, aln_path, args.threads)
-
-    # Easy line count in input fastqfile
-    fq_entries = 0
-    with gzip.open(args.in_fastq, 'rb') as f:
-        for i in f:
-            fq_entries += 1
-    fq_entries = int(fq_entries / 4)
-
     # Sort the adaptors by type and size
-    adaptors_t = [adaptor.name for sample, adaptor in ss]
+    adaptors_t = [(adaptor.name, os.path.abspath(fastq)) for sample, adaptor, fastq in ss]
     adaptor_set = set(adaptors_t)
     adaptors_sorted = dict([(i, []) for i in adaptor_set])
-    for sample, adaptor in ss:
-        adaptors_sorted[adaptor.name].append((sample, adaptor))
+    for sample, adaptor, fastq in ss:
+        adaptors_sorted[(adaptor.name, os.path.abspath(fastq))].append((sample, adaptor))
 
-    paf_entries = parse_paf_lines(aln_path)
-    out_fastqs = []
-    stats = ["Anglerfish v. "+version, "===================",""]
-    for adaptor in adaptor_set:
-        fragments, singletons, concats, unknowns = layout_matches(adaptor+"_i5",adaptor+"_i7",paf_entries)
+    #import pprint
+    #pp = pprint.PrettyPrinter(indent=2)
+    #pp.pprint(adaptors_sorted)
+
+
+    for key, sample in adaptors_sorted.items():
+
+        adaptor_name, fastq_path = key
+        sample0_name, adaptor0_object = sample[0]
+
+        aln_name = "{}_{}".format(adaptor_name,".".join(os.path.basename(fastq_path).split('.')[0:-1]))
+        aln_path = os.path.join(args.out_fastq, "{}.paf".format(aln_name))
+        adaptor_path = os.path.join(args.out_fastq,"{}.fasta".format(adaptor_name))
+        with open(adaptor_path, "w") as f:
+            f.write(ss.get_fastastring(adaptor_name))
+        retcode = run_minimap2(fastq_path, adaptor_path, aln_path, args.threads)
+
+        # Easy line count in input fastqfile
+        fq_entries = 0
+        with gzip.open(fastq_path, 'rb') as f:
+            for i in f:
+                fq_entries += 1
+        fq_entries = int(fq_entries / 4)
+
+        paf_entries = parse_paf_lines(aln_path)
+        out_fastqs = []
+        stats = ["Anglerfish v. "+version, "===================",""]
+#    for adaptor in adaptor_set:
+        fragments, singletons, concats, unknowns = layout_matches(adaptor_name+"_i5",adaptor_name+"_i7",paf_entries)
         total = len(fragments)+len(singletons)+len(concats)+len(unknowns)
-        stats.append(adaptor+":")
+        stats.append(adaptor_name+":")
         stats.append("{}\tinput reads".format(fq_entries))
         stats.append("{}\treads aligning to adaptor sequences ({:.2f}%)".format(total, (total/float(fq_entries)*100)))
         stats.append("{}\taligned reads matching both I7 and I5 adaptor ({:.2f}%)".format(len(fragments), (len(fragments)/float(total)*100)))
         stats.append("{}\taligned reads matching only I7 or I5 adaptor ({:.2f}%)".format(len(singletons), (len(singletons)/float(total)*100)))
         stats.append("{}\taligned reads matching multiple I7/I5 adaptor pairs ({:.2f}%)".format(len(concats), (len(concats)/float(total)*100)))
         stats.append("{}\taligned reads with uncategorized alignments ({:.2f}%)".format(len(unknowns), (len(unknowns)/float(total)*100)))
-        matches = cluster_matches(adaptors_sorted[adaptor], adaptor, fragments, args.max_distance)
+        matches = cluster_matches(adaptors_sorted[key], adaptor_name, fragments, args.max_distance)
         stats.append("")
         stats.append("sample_name\t#reads")
         aligned_samples = []
@@ -72,9 +82,9 @@ def run_demux(args):
             sample_dict = {i[0]: [i] for i in v}
             stats.append("{}\t{}".format(k, len(sample_dict.keys())))
             if not args.skip_demux:
-                write_demuxedfastq(sample_dict, args.in_fastq, fq_name)
+                write_demuxedfastq(sample_dict, fastq_path, fq_name)
         # Check if there were samples in the samplesheet without adaptor alignments
-        for ss_sample, ss_adaptor in ss:
+        for ss_sample, ss_adaptor, ss_path in ss:
             if ss_adaptor.name == adaptor and ss_sample not in aligned_samples:
                 stats.append("{}\t0".format(ss_sample))
     with open(os.path.join(args.out_fastq,"anglerfish_stats.txt"), "w") as f:
@@ -87,9 +97,8 @@ def run_demux(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Tools to demux I7 and I5 barcodes when sequenced by single-molecules')
-    parser.add_argument('--in_fastq', '-i', required=True, help='Input ONT fastq file')
-    parser.add_argument('--out_fastq', '-o', default='.', help='Analysis output folder (default: Current dir)')
     parser.add_argument('--samplesheet', '-s', required=True, help='CSV formatted list of samples and barcodes')
+    parser.add_argument('--out_fastq', '-o', default='.', help='Analysis output folder (default: Current dir)')
     parser.add_argument('--threads', '-t', default=4, help='Number of threads to use (default: 4)')
     parser.add_argument('--skip_demux', '-c', action='store_true', help='Only do BC counting and not demuxing')
     parser.add_argument('--skip_fastqc', '-f', action='store_true', help='After demuxing, skip running FastQC+MultiQC')
@@ -100,9 +109,7 @@ if __name__ == "__main__":
     runname = utcnow.strftime("anglerfish_%Y_%m_%d_%H%M%S")
 
     assert os.path.exists(args.out_fastq)
-    assert os.path.exists(args.in_fastq)
     assert os.path.exists(args.samplesheet)
     args.out_fastq = os.path.join(os.path.abspath(args.out_fastq),runname)
-    args.in_fastq = os.path.abspath(args.in_fastq)
     args.samplesheet = os.path.abspath(args.samplesheet)
     run_demux(args)
