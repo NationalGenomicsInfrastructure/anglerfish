@@ -32,4 +32,4 @@ jobs:
       # Run anglerfish using test data
       - shell: bash -l {0}
         name: Run anglerfish.py with test data
-        run: anglerfish.py -i test/BC18_P14351_1001.fastq.gz -s test/samples.csv
+        run: anglerfish.py -s test/samples.csv
