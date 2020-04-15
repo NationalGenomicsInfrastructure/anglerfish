@@ -34,17 +34,17 @@ def run_demux(args):
     for sample, adaptor, fastq in ss:
         adaptors_sorted[(adaptor.name, os.path.abspath(fastq))].append((sample, adaptor))
 
-    #import pprint
-    #pp = pprint.PrettyPrinter(indent=2)
-    #pp.pprint(adaptors_sorted)
-
+    paf_stats = {}
+    sample_stats = []
+    out_fastqs = []
+    all_samples = []
 
     for key, sample in adaptors_sorted.items():
 
         adaptor_name, fastq_path = key
         sample0_name, adaptor0_object = sample[0]
 
-        aln_name = "{}_{}".format(adaptor_name,".".join(os.path.basename(fastq_path).split('.')[0:-1]))
+        aln_name = "{}_{}".format(adaptor_name,os.path.basename(fastq_path).split('.')[0])
         aln_path = os.path.join(args.out_fastq, "{}.paf".format(aln_name))
         adaptor_path = os.path.join(args.out_fastq,"{}.fasta".format(adaptor_name))
         with open(adaptor_path, "w") as f:
@@ -57,40 +57,43 @@ def run_demux(args):
             for i in f:
                 fq_entries += 1
         fq_entries = int(fq_entries / 4)
-
         paf_entries = parse_paf_lines(aln_path)
-        out_fastqs = []
-        stats = ["Anglerfish v. "+version, "===================",""]
-#    for adaptor in adaptor_set:
+
         fragments, singletons, concats, unknowns = layout_matches(adaptor_name+"_i5",adaptor_name+"_i7",paf_entries)
         total = len(fragments)+len(singletons)+len(concats)+len(unknowns)
-        stats.append(adaptor_name+":")
-        stats.append("{}\tinput reads".format(fq_entries))
-        stats.append("{}\treads aligning to adaptor sequences ({:.2f}%)".format(total, (total/float(fq_entries)*100)))
-        stats.append("{}\taligned reads matching both I7 and I5 adaptor ({:.2f}%)".format(len(fragments), (len(fragments)/float(total)*100)))
-        stats.append("{}\taligned reads matching only I7 or I5 adaptor ({:.2f}%)".format(len(singletons), (len(singletons)/float(total)*100)))
-        stats.append("{}\taligned reads matching multiple I7/I5 adaptor pairs ({:.2f}%)".format(len(concats), (len(concats)/float(total)*100)))
-        stats.append("{}\taligned reads with uncategorized alignments ({:.2f}%)".format(len(unknowns), (len(unknowns)/float(total)*100)))
+        paf_stats[aln_name] = []
+        paf_stats[aln_name].append(aln_name+":")
+        paf_stats[aln_name].append("{}\tinput reads".format(fq_entries))
+        paf_stats[aln_name].append("{}\treads aligning to adaptor sequences ({:.2f}%)".format(total, (total/float(fq_entries)*100)))
+        paf_stats[aln_name].append("{}\taligned reads matching both I7 and I5 adaptor ({:.2f}%)".format(len(fragments), (len(fragments)/float(total)*100)))
+        paf_stats[aln_name].append("{}\taligned reads matching only I7 or I5 adaptor ({:.2f}%)".format(len(singletons), (len(singletons)/float(total)*100)))
+        paf_stats[aln_name].append("{}\taligned reads matching multiple I7/I5 adaptor pairs ({:.2f}%)".format(len(concats), (len(concats)/float(total)*100)))
+        paf_stats[aln_name].append("{}\taligned reads with uncategorized alignments ({:.2f}%)".format(len(unknowns), (len(unknowns)/float(total)*100)))
         matches = cluster_matches(adaptors_sorted[key], adaptor_name, fragments, args.max_distance)
-        stats.append("")
-        stats.append("sample_name\t#reads")
+
         aligned_samples = []
         for k, v in groupby(sorted(matches,key=lambda x: x[3]), key=lambda y: y[3]):
             aligned_samples.append(k)
             fq_name = os.path.join(args.out_fastq, k+".fastq.gz")
             out_fastqs.append(fq_name)
             sample_dict = {i[0]: [i] for i in v}
-            stats.append("{}\t{}".format(k, len(sample_dict.keys())))
+            sample_stats.append("{}\t{}".format(k, len(sample_dict.keys())))
             if not args.skip_demux:
                 write_demuxedfastq(sample_dict, fastq_path, fq_name)
+
+        all_samples.extend(aligned_samples)
         # Check if there were samples in the samplesheet without adaptor alignments
         for ss_sample, ss_adaptor, ss_path in ss:
             if ss_adaptor.name == adaptor and ss_sample not in aligned_samples:
-                stats.append("{}\t0".format(ss_sample))
+                sample_stats.append("{}\t0".format(ss_sample))
+
     with open(os.path.join(args.out_fastq,"anglerfish_stats.txt"), "w") as f:
-        for i in stats:
-            f.write(i+"\n")
-            log.info(i)
+        f.write("Anglerfish v. "+version+"\n===================\n")
+        for key, line in paf_stats.items():
+            f.write("\n".join(line)+"\n")
+        f.write("\nsample_name\t#reads\n")
+        for sample in sample_stats:
+            f.write(sample+"\n")
     if not args.skip_fastqc and not args.skip_demux:
         fastqc = run_fastqc(out_fastqs, args.out_fastq, args.threads)
 
