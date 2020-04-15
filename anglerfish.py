@@ -45,6 +45,7 @@ def run_demux(args):
         sample0_name, adaptor0_object = sample[0]
 
         aln_name = "{}_{}".format(adaptor_name,os.path.basename(fastq_path).split('.')[0])
+        assert aln_name not in paf_stats, "Input fastq files can not have the same filename"
         aln_path = os.path.join(args.out_fastq, "{}.paf".format(aln_name))
         adaptor_path = os.path.join(args.out_fastq,"{}.fasta".format(adaptor_name))
         with open(adaptor_path, "w") as f:
