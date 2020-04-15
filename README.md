@@ -110,11 +110,11 @@ In folder `anglerfish_????_??_??_?????/`
 * `fastqc/` raw output from fastqc (if run)
 * `multiqc/anglerfish_results_multiqc_report.html` Summary of demultiplexed reads
 
-<p align="center">
-  <img src="docs/Anglerfish_logo.svg">
-</p>
-
 ## Credits
 
 The Anglerfish code was written by [@remiolsen](https://github.com/remiolsen) but it would not exist without the contributions of [@FranBonath](https://github.com/FranBonath), [@taborsak](https://github.com/taborsak), [@ssjunnebo](https://github.com/ssjunnebo) and Carl Rubin.
 Also, the [Anglerfish logo](docs/Anglerfish_logo.svg) was designed by [@FranBonath](https://github.com/FranBonath).
+
+<p align="center">
+  <img src="docs/Anglerfish_logo.svg">
+</p>
