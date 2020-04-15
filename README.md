@@ -110,7 +110,9 @@ In folder `anglerfish_????_??_??_?????/`
 * `fastqc/` raw output from fastqc (if run)
 * `multiqc/anglerfish_results_multiqc_report.html` Summary of demultiplexed reads
 
-![Anglerfish](docs/Anglerfish_logo.svg)
+<p align="center">
+  <img src="docs/Anglerfish_logo.svg">
+</p>
 
 ## Credits
 
