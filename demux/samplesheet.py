@@ -67,6 +67,7 @@ class SampleSheet(object):
             csvfile.seek(0)
             data = csv.DictReader(csvfile,
                 fieldnames=['sample_name', 'adaptors', 'index', 'fastq_path'], dialect=dialect)
+            rn = 1
             for row in data:
                 if row['adaptors'] not in adaptors:
                     raise UserWarning("'{}' not in the list of valid adaptors: {}".format(row['adaptors'],adaptors.keys()))
@@ -74,8 +75,14 @@ class SampleSheet(object):
                 i7 = i7i5[0]; i5 = None
                 if len(i7i5) > 1:
                     i5 = i7i5[1]
+
+                sample_name = row['sample_name']
+                # TODO: find a more clever way of resolving duplicate names
+                if row['sample_name'] in [sn[0] for sn in self.samplesheet]:
+                    sample_name = sample_name+"_row"+str(rn)
                 assert os.path.exists(row['fastq_path']) == 1
-                self.samplesheet.append((row['sample_name'], Adaptor(row['adaptors'], i7, i5),row['fastq_path']))
+                self.samplesheet.append((sample_name, Adaptor(row['adaptors'], i7, i5),row['fastq_path']))
+                rn += 1
         except:
             raise
         finally:
@@ -83,22 +90,32 @@ class SampleSheet(object):
 
     def minimum_bc_distance(self):
 
-        testset = []
-        for sample, adaptor, fastq in self.samplesheet:
-            if adaptor.i5_index is not None:
-                testset.append(adaptor.i5_index+adaptor.i7_index)
+        ss_by_fastq = {}
+        testset = {}
+        for _, adaptor, fastq in self.samplesheet:
+            if fastq in ss_by_fastq:
+                ss_by_fastq[fastq].append(adaptor)
             else:
-                testset.append(adaptor.i7_index)
+                ss_by_fastq[fastq] = [adaptor]
 
+        for fastq, adaptors in ss_by_fastq.items():
+            testset[fastq] = []
+            for adaptor in adaptors:
+                if adaptor.i5_index is not None:
+                    testset[fastq].append(adaptor.i5_index+adaptor.i7_index)
+                else:
+                    testset[fastq].append(adaptor.i7_index)
 
-        distances=[]
-        if len(testset) == 1:
-            distances = [len(testset[0])]
-        else:
-            for a, b in [i for i in combinations(testset, 2)]:
-                distances.append(lev.distance(a,b))
-
-        return min(distances)
+        fq_distances=[]
+        for fastq, adaptors in testset.items():
+            distances = []
+            if len(adaptors) == 1:
+                distances = [len(adaptors[0])]
+            else:
+                for a, b in [i for i in combinations(adaptors, 2)]:
+                    distances.append(lev.distance(a,b))
+            fq_distances.append(min(distances))
+        return min(fq_distances)
 
     def get_fastastring(self, adaptor_name=None):
 
