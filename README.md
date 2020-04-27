@@ -3,7 +3,6 @@
 [![Anglerfish CI Status](https://github.com/remiolsen/anglerfish/workflows/Anglerfish/badge.svg)](https://github.com/remiolsen/anglerfish/actions)
 [![Docker Container available](https://img.shields.io/docker/automated/remiolsen/anglerfish.svg)](https://hub.docker.com/r/remiolsen/anglerfish/)
 
-![Anglerfish](docs/Anglerfish_logo.svg)
 
 ## Introduction
 
@@ -65,26 +64,26 @@ Anglerfish requires two files to run.
 Example of a samplesheet file:
 
 ```
-P12864_201,truseq_dual,TAATGCGC,CAGGACGT
-P12864_202,truseq_dual,TAATGCGC,GTACTGAC
-P9712_101, truseq_dual,ATTACTCG,TATAGCCT
-P9712_102, truseq_dual,ATTACTCG,ATAGAGGC
-P9712_103, truseq_dual,ATTACTCG,CCTATCCT
-P9712_104, truseq_dual,ATTACTCG,GGCTCTGA
-P9712_105, truseq_dual,ATTACTCG,AGGCGAAG
-P9712_106, truseq_dual,ATTACTCG,TAATCTTA
+P12864_201,truseq_dual,TAATGCGC-CAGGACGT,/path/to/ONTreads.fastq.gz
+P12864_202,truseq_dual,TAATGCGC-GTACTGAC,/path/to/ONTreads.fastq.gz
+P9712_101, truseq_dual,ATTACTCG-TATAGCCT,/path/to/ONTreads.fastq.gz
+P9712_102, truseq_dual,ATTACTCG-ATAGAGGC,/path/to/ONTreads.fastq.gz
+P9712_103, truseq_dual,ATTACTCG-CCTATCCT,/path/to/ONTreads.fastq.gz
+P9712_104, truseq_dual,ATTACTCG-GGCTCTGA,/path/to/ONTreads.fastq.gz
+P9712_105, truseq_dual,ATTACTCG-AGGCGAAG,/path/to/ONTreads.fastq.gz
+P9712_106, truseq_dual,ATTACTCG-TAATCTTA,/path/to/ONTreads.fastq.gz
 ```
 
 Or using single index:
 
 ```
-P12345_101,truseq,CAGGACGT
+P12345_101,truseq,CAGGACGT,/path/to/ONTreads.fastq.gz
 ```
 
 Then run:
 
 ```
-anglerfish.py -i /path/to/ONTreads.fastq.gz -o /path/to/samples.csv
+anglerfish.py -o /path/to/samples.csv
 ```
 
 ### Optional
@@ -115,3 +114,7 @@ In folder `anglerfish_????_??_??_?????/`
 
 The Anglerfish code was written by [@remiolsen](https://github.com/remiolsen) but it would not exist without the contributions of [@FranBonath](https://github.com/FranBonath), [@taborsak](https://github.com/taborsak), [@ssjunnebo](https://github.com/ssjunnebo) and Carl Rubin.
 Also, the [Anglerfish logo](docs/Anglerfish_logo.svg) was designed by [@FranBonath](https://github.com/FranBonath).
+
+<p align="center">
+  <img src="docs/Anglerfish_logo.svg">
+</p>

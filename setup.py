@@ -4,7 +4,7 @@ import sys, os
 
 setup(
     name='anglerfish',
-    version='0.2.0',
+    version='0.3.0',
     description='Anglerfish, a tool to demultiplex Illumina libraries from ONT data',
     author='Remi-Andre Olsen',
     author_email='remi-andre.olsen@scilifelab.se',
