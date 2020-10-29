@@ -6,6 +6,7 @@ import logging
 import sys
 import os
 import pkg_resources
+import numpy as np
 from datetime import datetime as dt
 from itertools import groupby
 from demux.demux import run_minimap2, parse_paf_lines, layout_matches, cluster_matches, write_demuxedfastq, run_fastqc
@@ -62,6 +63,7 @@ def run_demux(args):
 
         fragments, singletons, concats, unknowns = layout_matches(adaptor_name+"_i5",adaptor_name+"_i7",paf_entries)
         total = len(fragments)+len(singletons)+len(concats)+len(unknowns)
+
         paf_stats[aln_name] = []
         paf_stats[aln_name].append(aln_name+":")
         paf_stats[aln_name].append("{}\tinput reads".format(fq_entries))
@@ -78,7 +80,16 @@ def run_demux(args):
             fq_name = os.path.join(args.out_fastq, k+".fastq.gz")
             out_fastqs.append(fq_name)
             sample_dict = {i[0]: [i] for i in v}
-            sample_stats.append("{}\t{}".format(k, len(sample_dict.keys())))
+
+            # Find read lengths
+            rlens = np.array([])
+            for l,w in sample_dict.items():
+                for i in w:
+                    rlens = np.append(rlens, i[2]-i[1])
+            rmean = np.round(np.mean(rlens),2)
+            rstd = np.round(np.std(rlens),2)
+
+            sample_stats.append("{}\t{}\t{}\t{}".format(k, len(sample_dict.keys()), rmean, rstd))
             if not args.skip_demux:
                 write_demuxedfastq(sample_dict, fastq_path, fq_name)
 
@@ -92,7 +103,7 @@ def run_demux(args):
         f.write("Anglerfish v. "+version+"\n===================\n")
         for key, line in paf_stats.items():
             f.write("\n".join(line)+"\n")
-        f.write("\nsample_name\t#reads\n")
+        f.write("\nsample_name\t#reads\tmean_read_len\tstd_read_len\n")
         for sample in sample_stats:
             f.write(sample+"\n")
     if not args.skip_fastqc and not args.skip_demux:
