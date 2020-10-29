@@ -21,7 +21,8 @@ def run_demux(args):
     os.mkdir(args.out_fastq)
     ss = SampleSheet(args.samplesheet)
     version = pkg_resources.get_distribution("anglerfish").version
-
+    log.info(" version {}".format(version))
+    log.info(" arguments {}".format(vars(args)))
     bc_dist = ss.minimum_bc_distance()
     if args.max_distance >= bc_dist:
         log.error(" Edit distance of barcodes in samplesheet are less than the minimum specified {}>={}".format(args.max_distance, bc_dist))
