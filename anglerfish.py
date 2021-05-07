@@ -24,6 +24,12 @@ def run_demux(args):
     log.info(" version {}".format(version))
     log.info(" arguments {}".format(vars(args)))
     bc_dist = ss.minimum_bc_distance()
+    if bc_dist == 0:
+        log.error("There is one or more identical barcodes in the input samplesheet. Aborting!")
+        exit()
+    if args.max_distance == None:
+        args.max_distance = bc_dist - 1
+        log.info("Using maximum edit distance of {}".format(args.max_distance))
     if args.max_distance >= bc_dist:
         log.error(" Edit distance of barcodes in samplesheet are less than the minimum specified {}>={}".format(args.max_distance, bc_dist))
         exit()
@@ -118,7 +124,7 @@ if __name__ == "__main__":
     parser.add_argument('--threads', '-t', default=4, help='Number of threads to use (default: 4)')
     parser.add_argument('--skip_demux', '-c', action='store_true', help='Only do BC counting and not demuxing')
     parser.add_argument('--skip_fastqc', '-f', action='store_true', help='After demuxing, skip running FastQC+MultiQC')
-    parser.add_argument('--max-distance', '-m', default=2, type=int, help='Maximum edit distance for BC matching (default: 2)')
+    parser.add_argument('--max-distance', '-m', type=int, help='Manually adjust maximum edit distance for BC matching')
     parser.add_argument('--debug', '-d', action='store_true', help='Extra commandline output')
     args = parser.parse_args()
     utcnow = dt.utcnow()
