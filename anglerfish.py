@@ -9,6 +9,7 @@ import pkg_resources
 import numpy as np
 from datetime import datetime as dt
 from itertools import groupby
+from collections import Counter
 from demux.demux import run_minimap2, parse_paf_lines, layout_matches, cluster_matches, write_demuxedfastq, run_fastqc
 from demux.samplesheet import SampleSheet
 import gzip
@@ -44,6 +45,7 @@ def run_demux(args):
 
     paf_stats = {}
     sample_stats = []
+    unmatched_stats = []
     out_fastqs = []
     all_samples = []
 
@@ -79,7 +81,7 @@ def run_demux(args):
         paf_stats[aln_name].append("{}\taligned reads matching only I7 or I5 adaptor ({:.2f}%)".format(len(singletons), (len(singletons)/float(total)*100)))
         paf_stats[aln_name].append("{}\taligned reads matching multiple I7/I5 adaptor pairs ({:.2f}%)".format(len(concats), (len(concats)/float(total)*100)))
         paf_stats[aln_name].append("{}\taligned reads with uncategorized alignments ({:.2f}%)".format(len(unknowns), (len(unknowns)/float(total)*100)))
-        matches = cluster_matches(adaptors_sorted[key], adaptor_name, fragments, args.max_distance)
+        no_matches, matches = cluster_matches(adaptors_sorted[key], adaptor_name, fragments, args.max_distance)
 
         aligned_samples = []
         for k, v in groupby(sorted(matches,key=lambda x: x[3]), key=lambda y: y[3]):
@@ -106,6 +108,10 @@ def run_demux(args):
             if ss_adaptor.name == adaptor and ss_sample not in aligned_samples:
                 sample_stats.append("{}\t0".format(ss_sample))
 
+        # Top unmatched indexes
+        nomatch_count = Counter([x[3] for x in no_matches])
+        unmatched_stats.append(nomatch_count.most_common(10))
+
     with open(os.path.join(args.out_fastq,"anglerfish_stats.txt"), "w") as f:
         f.write("Anglerfish v. "+version+"\n===================\n")
         for key, line in paf_stats.items():
@@ -113,6 +119,11 @@ def run_demux(args):
         f.write("\nsample_name\t#reads\tmean_read_len\tstd_read_len\n")
         for sample in sample_stats:
             f.write(sample+"\n")
+        f.write("\nundetermined_index\tcount\n")
+        for unmatch in unmatched_stats:
+            for idx, mnum in unmatch:
+                f.write("{}\t{}\n".format(idx, mnum))
+
     if not args.skip_fastqc and not args.skip_demux:
         fastqc = run_fastqc(out_fastqs, args.out_fastq, args.threads)
 
