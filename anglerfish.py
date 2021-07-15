@@ -5,6 +5,7 @@ import argparse
 import logging
 import sys
 import os
+import json
 import pkg_resources
 import numpy as np
 from datetime import datetime as dt
@@ -112,18 +113,26 @@ def run_demux(args):
         nomatch_count = Counter([x[3] for x in no_matches])
         unmatched_stats.append(nomatch_count.most_common(10))
 
+    header1 = ["sample_name","#reads","mean_read_len","std_read_len"]
+    header2 = ["undetermined_index","count"]
+    json_out = {"angerfish_version":version,"paf_stats": [], "sample_stats": [], "undetermined": []}
     with open(os.path.join(args.out_fastq,"anglerfish_stats.txt"), "w") as f:
         f.write("Anglerfish v. "+version+"\n===================\n")
         for key, line in paf_stats.items():
             f.write("\n".join(line)+"\n")
-        f.write("\nsample_name\t#reads\tmean_read_len\tstd_read_len\n")
+            json_out["paf_stats"].append(line) 
+        f.write("\n{}\n".format("\t".join(header1)))
         for sample in sample_stats:
             f.write(sample+"\n")
-        f.write("\nundetermined_index\tcount\n")
+            json_out["sample_stats"].append(dict(zip(header1,sample.split("\t")))) 
+        f.write("\n{}\n".format("\t".join(header2)))
         for unmatch in unmatched_stats:
             for idx, mnum in unmatch:
                 f.write("{}\t{}\n".format(idx, mnum))
+                json_out["undetermined"].append(dict(zip(header2,[idx, mnum])))
 
+    with open(os.path.join(args.out_fastq,"anglerfish_stats.json"), "w") as f:
+        f.write(json.dumps(json_out,indent=2, sort_keys=True))
     if not args.skip_fastqc and not args.skip_demux:
         fastqc = run_fastqc(out_fastqs, args.out_fastq, args.threads)
 
