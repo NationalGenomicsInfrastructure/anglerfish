@@ -120,11 +120,11 @@ def run_demux(args):
         f.write("Anglerfish v. "+version+"\n===================\n")
         for key, line in paf_stats.items():
             f.write("\n".join(line)+"\n")
-            json_out["paf_stats"].append(line) 
+            json_out["paf_stats"].append(line)
         f.write("\n{}\n".format("\t".join(header1)))
         for sample in sample_stats:
             f.write(sample+"\n")
-            json_out["sample_stats"].append(dict(zip(header1,sample.split("\t")))) 
+            json_out["sample_stats"].append(dict(zip(header1,sample.split("\t"))))
         f.write("\n{}\n".format("\t".join(header2)))
         for unmatch in unmatched_stats:
             for idx, mnum in unmatch:
