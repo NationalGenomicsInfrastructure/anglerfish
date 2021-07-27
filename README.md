@@ -22,6 +22,7 @@ Python modules:
 
 * biopython v. 1.70
 * python-levenshtein v. 0.12.0
+* numpy v. 1.19.2
 
 Software:
 
@@ -98,7 +99,7 @@ anglerfish.py -o /path/to/samples.csv
 --skip_demux, -c      Only do BC counting and not demuxing
 --skip_fastqc, -f     After demuxing, skip running FastQC+MultiQC
 --max-distance MAX_DISTANCE, -m MAX_DISTANCE
-                      Maximum edit distance for BC matching (default: 2)
+                      Manually adjust maximum edit distance for BC matching
 ```
 
 ### Output files

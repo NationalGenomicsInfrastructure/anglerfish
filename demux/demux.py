@@ -25,7 +25,7 @@ def parse_cs(cs_string, index, max_distance):
     nts = "".join(re.findall(nt, cs_string))
 
     # Allow for mismatches
-    return lev.distance(index.lower(), nts)
+    return nts, lev.distance(index.lower(), nts)
 
 def run_fastqc(fastqs, out_path, threads):
     """
@@ -157,7 +157,7 @@ def layout_matches(i5_name, i7_name, paf_entries):
 def cluster_matches(sample_adaptor, adaptor_name, matches, max_distance):
 
     # Only illumina fragments
-    matched = {}; matched_bed = []; unmatched = {}
+    matched = {}; matched_bed = []; unmatched_bed = []
     for read, alignments in matches.items():
 
         i5 = False
@@ -173,35 +173,35 @@ def cluster_matches(sample_adaptor, adaptor_name, matches, max_distance):
             continue
 
         dists = []
+        fi5 = ""; fi7 = ""
         for sample, adaptor in sample_adaptor:
             try:
-                d1 = parse_cs(i5['cs'], adaptor.i5_index, max_distance)
+                fi5, d1 = parse_cs(i5['cs'], adaptor.i5_index, max_distance)
             except AttributeError:
                 d1 = 0 # presumably there it's single index
-            d2 = parse_cs(i7['cs'], adaptor.i7_index, max_distance)
+            fi7, d2 = parse_cs(i7['cs'], adaptor.i7_index, max_distance)
             dists.append(d1+d2)
 
         index_min = min(range(len(dists)), key=dists.__getitem__)
         # Test if two samples in the sheet is equidistant to the i5/i7
         if len([i for i, j in enumerate(dists) if j==dists[index_min]]) > 1:
             log.debug(" Ambiguous alignment, skipping")
-            unmatched[read] = alignments
             continue
-        if dists[index_min] > max_distance:
-            log.debug(" No match")
-            unmatched[read] = alignments
-            continue
-
         start_insert = min(i5['rend'],i7['rend'])
         end_insert = max(i7['rstart'],i5['rstart'])
         if end_insert - start_insert < 10:
             log.debug(" Erroneous / overlapping adaptor matches")
-            unmatched[read] = alignments
             continue
-
+        if dists[index_min] > max_distance:
+            log.debug(" No match")
+            # Find only full length i7(+i5) adaptor combos. Basically a list of "known unknowns"
+            if len(fi7) + len(fi5) == len(adaptor.i7_index or "") + len(adaptor.i5_index or ""):
+                fi75 = "+".join([i for i in [fi7, fi5] if not i == ""])
+                unmatched_bed.append([read, start_insert, end_insert, fi75, "999", "."])
+            continue
         matched[read] = alignments
         matched_bed.append([read, start_insert, end_insert, sample_adaptor[index_min][0], "999", "."])
-    return matched_bed
+    return unmatched_bed, matched_bed
 
 
 

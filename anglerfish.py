@@ -5,9 +5,12 @@ import argparse
 import logging
 import sys
 import os
+import json
 import pkg_resources
+import numpy as np
 from datetime import datetime as dt
 from itertools import groupby
+from collections import Counter
 from demux.demux import run_minimap2, parse_paf_lines, layout_matches, cluster_matches, write_demuxedfastq, run_fastqc
 from demux.samplesheet import SampleSheet
 import gzip
@@ -20,8 +23,15 @@ def run_demux(args):
     os.mkdir(args.out_fastq)
     ss = SampleSheet(args.samplesheet)
     version = pkg_resources.get_distribution("anglerfish").version
-
+    log.info(" version {}".format(version))
+    log.info(" arguments {}".format(vars(args)))
     bc_dist = ss.minimum_bc_distance()
+    if bc_dist == 0:
+        log.error("There is one or more identical barcodes in the input samplesheet. Aborting!")
+        exit()
+    if args.max_distance == None:
+        args.max_distance = bc_dist - 1
+        log.info("Using maximum edit distance of {}".format(args.max_distance))
     if args.max_distance >= bc_dist:
         log.error(" Edit distance of barcodes in samplesheet are less than the minimum specified {}>={}".format(args.max_distance, bc_dist))
         exit()
@@ -36,6 +46,7 @@ def run_demux(args):
 
     paf_stats = {}
     sample_stats = []
+    unmatched_stats = []
     out_fastqs = []
     all_samples = []
 
@@ -62,6 +73,7 @@ def run_demux(args):
 
         fragments, singletons, concats, unknowns = layout_matches(adaptor_name+"_i5",adaptor_name+"_i7",paf_entries)
         total = len(fragments)+len(singletons)+len(concats)+len(unknowns)
+
         paf_stats[aln_name] = []
         paf_stats[aln_name].append(aln_name+":")
         paf_stats[aln_name].append("{}\tinput reads".format(fq_entries))
@@ -70,7 +82,7 @@ def run_demux(args):
         paf_stats[aln_name].append("{}\taligned reads matching only I7 or I5 adaptor ({:.2f}%)".format(len(singletons), (len(singletons)/float(total)*100)))
         paf_stats[aln_name].append("{}\taligned reads matching multiple I7/I5 adaptor pairs ({:.2f}%)".format(len(concats), (len(concats)/float(total)*100)))
         paf_stats[aln_name].append("{}\taligned reads with uncategorized alignments ({:.2f}%)".format(len(unknowns), (len(unknowns)/float(total)*100)))
-        matches = cluster_matches(adaptors_sorted[key], adaptor_name, fragments, args.max_distance)
+        no_matches, matches = cluster_matches(adaptors_sorted[key], adaptor_name, fragments, args.max_distance)
 
         aligned_samples = []
         for k, v in groupby(sorted(matches,key=lambda x: x[3]), key=lambda y: y[3]):
@@ -78,7 +90,16 @@ def run_demux(args):
             fq_name = os.path.join(args.out_fastq, k+".fastq.gz")
             out_fastqs.append(fq_name)
             sample_dict = {i[0]: [i] for i in v}
-            sample_stats.append("{}\t{}".format(k, len(sample_dict.keys())))
+
+            # Find read lengths
+            rlens = np.array([])
+            for l,w in sample_dict.items():
+                for i in w:
+                    rlens = np.append(rlens, i[2]-i[1])
+            rmean = np.round(np.mean(rlens),2)
+            rstd = np.round(np.std(rlens),2)
+
+            sample_stats.append("{}\t{}\t{}\t{}".format(k, len(sample_dict.keys()), rmean, rstd))
             if not args.skip_demux:
                 write_demuxedfastq(sample_dict, fastq_path, fq_name)
 
@@ -88,13 +109,30 @@ def run_demux(args):
             if ss_adaptor.name == adaptor and ss_sample not in aligned_samples:
                 sample_stats.append("{}\t0".format(ss_sample))
 
+        # Top unmatched indexes
+        nomatch_count = Counter([x[3] for x in no_matches])
+        unmatched_stats.append(nomatch_count.most_common(10))
+
+    header1 = ["sample_name","#reads","mean_read_len","std_read_len"]
+    header2 = ["undetermined_index","count"]
+    json_out = {"angerfish_version":version,"paf_stats": [], "sample_stats": [], "undetermined": []}
     with open(os.path.join(args.out_fastq,"anglerfish_stats.txt"), "w") as f:
         f.write("Anglerfish v. "+version+"\n===================\n")
         for key, line in paf_stats.items():
             f.write("\n".join(line)+"\n")
-        f.write("\nsample_name\t#reads\n")
+            json_out["paf_stats"].append(line)
+        f.write("\n{}\n".format("\t".join(header1)))
         for sample in sample_stats:
             f.write(sample+"\n")
+            json_out["sample_stats"].append(dict(zip(header1,sample.split("\t"))))
+        f.write("\n{}\n".format("\t".join(header2)))
+        for unmatch in unmatched_stats:
+            for idx, mnum in unmatch:
+                f.write("{}\t{}\n".format(idx, mnum))
+                json_out["undetermined"].append(dict(zip(header2,[idx, mnum])))
+
+    with open(os.path.join(args.out_fastq,"anglerfish_stats.json"), "w") as f:
+        f.write(json.dumps(json_out,indent=2, sort_keys=True))
     if not args.skip_fastqc and not args.skip_demux:
         fastqc = run_fastqc(out_fastqs, args.out_fastq, args.threads)
 
@@ -106,7 +144,7 @@ if __name__ == "__main__":
     parser.add_argument('--threads', '-t', default=4, help='Number of threads to use (default: 4)')
     parser.add_argument('--skip_demux', '-c', action='store_true', help='Only do BC counting and not demuxing')
     parser.add_argument('--skip_fastqc', '-f', action='store_true', help='After demuxing, skip running FastQC+MultiQC')
-    parser.add_argument('--max-distance', '-m', default=2, type=int, help='Maximum edit distance for BC matching (default: 2)')
+    parser.add_argument('--max-distance', '-m', type=int, help='Manually adjust maximum edit distance for BC matching')
     parser.add_argument('--debug', '-d', action='store_true', help='Extra commandline output')
     args = parser.parse_args()
     utcnow = dt.utcnow()
