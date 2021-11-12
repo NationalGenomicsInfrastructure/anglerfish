@@ -17,9 +17,7 @@ log = logging.getLogger('demux')
 def parse_cs(cs_string, index, max_distance):
     """
     Parses the CS string of a paf alignment and matches it to the given index using a max Levenshtein distance
-    TODO: Grab the alignment context and do Smith-Waterman,
-          or do some clever stuff when parsing the cs string
-    PIPEDREAM: Do something big-brained with ONT squigglies
+    TODO / idea: Do something big-brained with ONT squigglies
     """
     nt = re.compile("\*n([atcg])")
     nts = "".join(re.findall(nt, cs_string))
@@ -79,8 +77,7 @@ def run_minimap2(fastq_in, indexfile, output_paf, threads):
     proc = subprocess.run(cmd, check=True)
     return proc.returncode
 
-#from memory_profiler import profile
-#@profile
+
 def parse_paf_lines(paf, min_qual=10):
     """
     Read and parse one paf alignment lines.
