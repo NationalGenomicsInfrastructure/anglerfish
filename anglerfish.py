@@ -136,8 +136,8 @@ def run_demux(args):
 
     with open(os.path.join(args.out_fastq,"anglerfish_stats.json"), "w") as f:
         f.write(json.dumps(json_out,indent=2, sort_keys=True))
-    if not args.skip_fastqc and not args.skip_demux:
-        fastqc = run_fastqc(out_fastqs, args.out_fastq, args.threads)
+    if args.skip_fastqc:
+        log.warning(" As of version 0.4.1, built in support for FastQC + MultiQC is removed. The '-f' flag is redundant.")
 
 
 if __name__ == "__main__":
@@ -146,7 +146,7 @@ if __name__ == "__main__":
     parser.add_argument('--out_fastq', '-o', default='.', help='Analysis output folder (default: Current dir)')
     parser.add_argument('--threads', '-t', default=4, help='Number of threads to use (default: 4)')
     parser.add_argument('--skip_demux', '-c', action='store_true', help='Only do BC counting and not demuxing')
-    parser.add_argument('--skip_fastqc', '-f', action='store_true', help='After demuxing, skip running FastQC+MultiQC')
+    parser.add_argument('--skip_fastqc', '-f', action='store_true', help=argparse.SUPPRESS)
     parser.add_argument('--max-distance', '-m', type=int, help='Manually set maximum edit distance for BC matching, automatically set this is set to either 1 or 2')
     parser.add_argument('--debug', '-d', action='store_true', help='Extra commandline output')
     args = parser.parse_args()

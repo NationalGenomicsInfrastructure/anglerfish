@@ -27,8 +27,6 @@ Python modules:
 Software:
 
 * minimap2 v. 2.17
-* fastqc v. 0.11.9 (optional)
-* multiqc v. 1.8 (optional)
 
 ### Manually using pip
 
@@ -84,7 +82,7 @@ P12345_101,truseq,CAGGACGT,/path/to/ONTreads.fastq.gz
 Then run:
 
 ```
-anglerfish.py -o /path/to/samples.csv
+anglerfish.py -s /path/to/samples.csv
 ```
 
 ### Optional
@@ -97,9 +95,8 @@ anglerfish.py -o /path/to/samples.csv
 --threads THREADS, -t THREADS
                       Number of threads to use (default: 4)
 --skip_demux, -c      Only do BC counting and not demuxing
---skip_fastqc, -f     After demuxing, skip running FastQC+MultiQC
 --max-distance MAX_DISTANCE, -m MAX_DISTANCE
-                      Manually adjust maximum edit distance for BC matching
+                      Manually set maximum edit distance for BC matching, automatically set this is set to either 1 or 2
 ```
 
 ### Output files
@@ -108,8 +105,8 @@ In folder `anglerfish_????_??_??_?????/`
 
 * `*.fastq.gz` Demultuplexed reads (if any)
 * `anglerfish_stats.txt` Barcode statistics from anglerfish run
-* `fastqc/` raw output from fastqc (if run)
-* `multiqc/anglerfish_results_multiqc_report.html` Summary of demultiplexed reads
+* `anglerfish_stats.json` Machine readable anglerfish statistics
+
 
 ## Credits
 
