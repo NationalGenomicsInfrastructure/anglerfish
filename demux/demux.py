@@ -17,9 +17,7 @@ log = logging.getLogger('demux')
 def parse_cs(cs_string, index, max_distance):
     """
     Parses the CS string of a paf alignment and matches it to the given index using a max Levenshtein distance
-    TODO: Grab the alignment context and do Smith-Waterman,
-          or do some clever stuff when parsing the cs string
-    PIPEDREAM: Do something big-brained with ONT squigglies
+    TODO / idea: Do something big-brained with ONT squigglies
     """
     nt = re.compile("\*n([atcg])")
     nts = "".join(re.findall(nt, cs_string))
@@ -27,34 +25,6 @@ def parse_cs(cs_string, index, max_distance):
     # Allow for mismatches
     return nts, lev.distance(index.lower(), nts)
 
-def run_fastqc(fastqs, out_path, threads):
-    """
-    Runs fastqc + multiqc
-    """
-    fastqc_path = os.path.join(out_path,"fastqc/")
-    multiqc_path = os.path.join(out_path,"multiqc/")
-    if not os.path.exists(fastqc_path):
-        os.mkdir(fastqc_path)
-    if not os.path.exists(multiqc_path):
-        os.mkdir(multiqc_path)
-    cmd1 = [
-        "fastqc",
-        "-q",
-        "-t", str(threads),
-        "-o", fastqc_path
-    ]
-    cmd1.extend(fastqs)
-    proc1 = subprocess.run(cmd1, check=True)
-    cmd2 = [
-        "multiqc",
-        "-i", "anglerfish_results",
-        "-o", multiqc_path,
-        "-m", "fastqc",
-        "-f",
-        fastqc_path
-    ]
-    proc2 = subprocess.run(cmd2, check=True)
-    return proc1.returncode + proc2.returncode
 
 def run_minimap2(fastq_in, indexfile, output_paf, threads):
     """
@@ -79,8 +49,7 @@ def run_minimap2(fastq_in, indexfile, output_paf, threads):
     proc = subprocess.run(cmd, check=True)
     return proc.returncode
 
-#from memory_profiler import profile
-#@profile
+
 def parse_paf_lines(paf, min_qual=10):
     """
     Read and parse one paf alignment lines.

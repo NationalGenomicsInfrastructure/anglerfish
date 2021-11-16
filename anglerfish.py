@@ -11,7 +11,7 @@ import numpy as np
 from datetime import datetime as dt
 from itertools import groupby
 from collections import Counter
-from demux.demux import run_minimap2, parse_paf_lines, layout_matches, cluster_matches, write_demuxedfastq, run_fastqc
+from demux.demux import run_minimap2, parse_paf_lines, layout_matches, cluster_matches, write_demuxedfastq
 from demux.samplesheet import SampleSheet
 import gzip
 logging.basicConfig(level=logging.INFO)
@@ -30,7 +30,10 @@ def run_demux(args):
         log.error("There is one or more identical barcodes in the input samplesheet. Aborting!")
         exit()
     if args.max_distance == None:
-        args.max_distance = bc_dist - 1
+        if bc_dist > 1:
+            args.max_distance = 2
+        else:
+            args.max_distance = 1
         log.info("Using maximum edit distance of {}".format(args.max_distance))
     if args.max_distance >= bc_dist:
         log.error(" Edit distance of barcodes in samplesheet are less than the minimum specified {}>={}".format(args.max_distance, bc_dist))
@@ -74,14 +77,14 @@ def run_demux(args):
         fragments, singletons, concats, unknowns = layout_matches(adaptor_name+"_i5",adaptor_name+"_i7",paf_entries)
         total = len(fragments)+len(singletons)+len(concats)+len(unknowns)
 
-        paf_stats[aln_name] = []
-        paf_stats[aln_name].append(aln_name+":")
-        paf_stats[aln_name].append("{}\tinput reads".format(fq_entries))
-        paf_stats[aln_name].append("{}\treads aligning to adaptor sequences ({:.2f}%)".format(total, (total/float(fq_entries)*100)))
-        paf_stats[aln_name].append("{}\taligned reads matching both I7 and I5 adaptor ({:.2f}%)".format(len(fragments), (len(fragments)/float(total)*100)))
-        paf_stats[aln_name].append("{}\taligned reads matching only I7 or I5 adaptor ({:.2f}%)".format(len(singletons), (len(singletons)/float(total)*100)))
-        paf_stats[aln_name].append("{}\taligned reads matching multiple I7/I5 adaptor pairs ({:.2f}%)".format(len(concats), (len(concats)/float(total)*100)))
-        paf_stats[aln_name].append("{}\taligned reads with uncategorized alignments ({:.2f}%)".format(len(unknowns), (len(unknowns)/float(total)*100)))
+        paf_stats[aln_name] = {}
+        paf_stats[aln_name]["input_reads"] = [fq_entries, 1.0]
+        paf_stats[aln_name]["reads aligning to adaptor sequences"] = [total, total/float(fq_entries)]
+        paf_stats[aln_name]["aligned reads matching both I7 and I5 adaptor"] = [len(fragments), len(fragments)/float(total)]
+        paf_stats[aln_name]["aligned reads matching only I7 or I5 adaptor"] = [len(singletons), len(singletons)/float(total)]
+        paf_stats[aln_name]["aligned reads matching multiple I7/I5 adaptor pairs"] = [len(concats), len(concats)/float(total)]
+        paf_stats[aln_name]["aligned reads with uncategorized alignments"] = [len(unknowns), len(unknowns)/float(total)]
+
         no_matches, matches = cluster_matches(adaptors_sorted[key], adaptor_name, fragments, args.max_distance)
 
         aligned_samples = []
@@ -119,7 +122,9 @@ def run_demux(args):
     with open(os.path.join(args.out_fastq,"anglerfish_stats.txt"), "w") as f:
         f.write("Anglerfish v. "+version+"\n===================\n")
         for key, line in paf_stats.items():
-            f.write("\n".join(line)+"\n")
+            f.write(f"{key}:\n")
+            for i,j in line.items():
+                f.write(f"{j[0]}\t{i} ({j[1]*100:.2f}%)\n")
             json_out["paf_stats"].append(line)
         f.write("\n{}\n".format("\t".join(header1)))
         for sample in sample_stats:
@@ -133,8 +138,8 @@ def run_demux(args):
 
     with open(os.path.join(args.out_fastq,"anglerfish_stats.json"), "w") as f:
         f.write(json.dumps(json_out,indent=2, sort_keys=True))
-    if not args.skip_fastqc and not args.skip_demux:
-        fastqc = run_fastqc(out_fastqs, args.out_fastq, args.threads)
+    if args.skip_fastqc:
+        log.warning(" As of version 0.4.1, built in support for FastQC + MultiQC is removed. The '-f' flag is redundant.")
 
 
 if __name__ == "__main__":
@@ -143,8 +148,8 @@ if __name__ == "__main__":
     parser.add_argument('--out_fastq', '-o', default='.', help='Analysis output folder (default: Current dir)')
     parser.add_argument('--threads', '-t', default=4, help='Number of threads to use (default: 4)')
     parser.add_argument('--skip_demux', '-c', action='store_true', help='Only do BC counting and not demuxing')
-    parser.add_argument('--skip_fastqc', '-f', action='store_true', help='After demuxing, skip running FastQC+MultiQC')
-    parser.add_argument('--max-distance', '-m', type=int, help='Manually adjust maximum edit distance for BC matching')
+    parser.add_argument('--skip_fastqc', '-f', action='store_true', help=argparse.SUPPRESS)
+    parser.add_argument('--max-distance', '-m', type=int, help='Manually set maximum edit distance for BC matching, automatically set this is set to either 1 or 2')
     parser.add_argument('--debug', '-d', action='store_true', help='Extra commandline output')
     args = parser.parse_args()
     utcnow = dt.utcnow()
