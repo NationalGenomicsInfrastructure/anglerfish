@@ -4,7 +4,7 @@ LABEL author="Remi-Andre Olsen" \
       description="Anglerfish" \
       maintainer="remi-andre.olsen@scilifelab.se"
 
-RUN apt-get update && apt-get install -y build-essential bash
+RUN apt-get update --allow-releaseinfo-change && apt-get install -y build-essential bash
 COPY environment.yml /
 RUN conda env create -f /environment.yml && conda clean -a
 
