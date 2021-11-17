@@ -3,8 +3,8 @@ from setuptools import setup, find_packages
 import sys, os
 
 setup(
-    name='anglerfish',
-    version='0.4.1',
+    name='bio-anglerfish',
+    version='0.4.2',
     description='Anglerfish, a tool to demultiplex Illumina libraries from ONT data',
     author='Remi-Andre Olsen',
     author_email='remi-andre.olsen@scilifelab.se',
