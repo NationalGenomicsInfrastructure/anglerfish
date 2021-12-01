@@ -12,9 +12,9 @@ setup(
     license='MIT',
     packages = find_packages(),
     install_requires=[
-        'python-levenshtein',
-        'biopython',
-        'numpy'
+        'python-levenshtein==0.12.0',
+        'biopython==1.70',
+        'numpy==1.19.2'
     ],
     scripts=['./anglerfish.py'],
     zip_safe=False,
