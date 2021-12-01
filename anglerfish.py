@@ -118,7 +118,7 @@ def run_demux(args):
 
     header1 = ["sample_name","#reads","mean_read_len","std_read_len"]
     header2 = ["undetermined_index","count"]
-    json_out = {"angerfish_version":version,"paf_stats": [], "sample_stats": [], "undetermined": []}
+    json_out = {"anglerfish_version":version,"paf_stats": [], "sample_stats": [], "undetermined": []}
     with open(os.path.join(args.out_fastq,"anglerfish_stats.txt"), "w") as f:
         f.write("Anglerfish v. "+version+"\n===================\n")
         for key, line in paf_stats.items():
