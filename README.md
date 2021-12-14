@@ -16,7 +16,7 @@ For more information on how this can be used, please see this [poster](docs/AGBT
 
 ### Requirements
 
-* Python3 (3.6)
+* Python3 (3.7)
 
 Python modules:
 
@@ -31,7 +31,7 @@ Software:
 ### Manually using pip
 
 ```
-pip install --upgrade --force-reinstall git+https://github.com/remiolsen/anglerfish.git
+pip install bio-anglerfish
 ```
 
 ### Manually with Conda
