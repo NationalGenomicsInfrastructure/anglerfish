@@ -10,6 +10,7 @@ setup(
     author_email='remi-andre.olsen@scilifelab.se',
     url='https://github.com/remiolsen/anglerfish',
     license='MIT',
+    python_requires=">=3.7",
     packages = find_packages(),
     install_requires=[
         'python-levenshtein==0.12.0',
