@@ -17,7 +17,12 @@ setup(
         'biopython==1.70',
         'numpy==1.19.2'
     ],
-    scripts=['./anglerfish.py'],
+    entry_points={
+        "console_scripts": [
+            "anglerfish=anglerfish.anglerfish:anglerfish",
+        ]
+    },
+    scripts=['scripts/anglerfish.py'],
     zip_safe=False,
     classifiers=[
     	"Development Status :: 3 - Alpha",

@@ -11,8 +11,8 @@ import numpy as np
 from datetime import datetime as dt
 from itertools import groupby
 from collections import Counter
-from demux.demux import run_minimap2, parse_paf_lines, layout_matches, cluster_matches, write_demuxedfastq
-from demux.samplesheet import SampleSheet
+from .demux.demux import run_minimap2, parse_paf_lines, layout_matches, cluster_matches, write_demuxedfastq
+from .demux.samplesheet import SampleSheet
 import gzip
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger('anglerfish')
@@ -142,7 +142,7 @@ def run_demux(args):
         log.warning(" As of version 0.4.1, built in support for FastQC + MultiQC is removed. The '-f' flag is redundant.")
 
 
-if __name__ == "__main__":
+def anglerfish():
     parser = argparse.ArgumentParser(description='Tools to demux I7 and I5 barcodes when sequenced by single-molecules')
     parser.add_argument('--samplesheet', '-s', required=True, help='CSV formatted list of samples and barcodes')
     parser.add_argument('--out_fastq', '-o', default='.', help='Analysis output folder (default: Current dir)')
