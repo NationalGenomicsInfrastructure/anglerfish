@@ -20,17 +20,12 @@ jobs:
            auto-update-conda: true
            auto-activate-base: false
 
-      # Install Anglerfish
-      - shell: bash -l {0}
-        name: Install Anglerfish
-        run: python setup.py install
-
       # Run anglerfish.py --help
       - shell: bash -l {0}
-        name: Test anglerfish.py
+        name: Test anglerfish
         run: anglerfish --help
 
       # Run anglerfish using test data
       - shell: bash -l {0}
-        name: Run anglerfish.py with test data
+        name: Run anglerfish with test data
         run: anglerfish -s test/samples.csv
