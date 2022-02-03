@@ -1,7 +1,7 @@
 # Anglerfish
 [![Anglerfish CI Status](https://github.com/remiolsen/anglerfish/workflows/Anglerfish/badge.svg)](https://github.com/remiolsen/anglerfish/actions)
 [![PyPI](https://img.shields.io/pypi/v/bio-anglerfish)](https://pypi.python.org/pypi/bio-anglerfish/)
-![Conda (channel only)](https://img.shields.io/conda/vn/bioconda/anglerfish)
+[![Conda (channel only)](https://img.shields.io/conda/vn/bioconda/anglerfish)](https://anaconda.org/bioconda/anglerfish)
 [![Docker Container available](https://img.shields.io/docker/automated/remiolsen/anglerfish.svg)](https://hub.docker.com/r/remiolsen/anglerfish/)
 
 
@@ -27,7 +27,7 @@ Python modules:
 
 Software:
 
-* minimap2 v. 2.17
+* minimap2 v. 2.20
 
 ### From PyPi
 
