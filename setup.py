@@ -4,7 +4,7 @@ import sys, os
 
 setup(
     name='bio-anglerfish',
-    version='0.4.2',
+    version='0.4.2-rc.1',
     description='Anglerfish, a tool to demultiplex Illumina libraries from ONT data',
     author='Remi-Andre Olsen',
     author_email='remi-andre.olsen@scilifelab.se',
@@ -14,7 +14,7 @@ setup(
     packages = find_packages(),
     install_requires=[
         'python-levenshtein==0.12.0',
-        'biopython==1.70',
+        'biopython==1.79',
         'numpy==1.19.2'
     ],
     entry_points={
