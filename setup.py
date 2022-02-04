@@ -20,9 +20,8 @@ setup(
     entry_points={
         "console_scripts": [
             "anglerfish=anglerfish.anglerfish:anglerfish",
-        ]
+        ],
     },
-    scripts=['scripts/anglerfish.py'],
     zip_safe=False,
     classifiers=[
     	"Development Status :: 3 - Alpha",
