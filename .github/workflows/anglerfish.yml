@@ -23,9 +23,11 @@ jobs:
       # Install Anglerfish
       - shell: bash -l {0}
         name: Install Anglerfish
-        run: python -m pip install .
+        run: |
+          conda activate anglerfish
+          python -m pip install .
 
-      # Run anglerfish.py --help
+      # Run anglerfish --help
       - shell: bash -l {0}
         name: Test anglerfish
         run: | 
@@ -34,7 +36,7 @@ jobs:
 
       # Run anglerfish using test data
       - shell: bash -l {0}
-        name: Run anglerfish.py with test data
+        name: Run anglerfish with test data
         run: |
           conda activate anglerfish
           anglerfish -s test/samples.csv
