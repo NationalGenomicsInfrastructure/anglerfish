@@ -1,9 +1,10 @@
 name: anglerfish
 channels:
-  - bioconda
   - conda-forge
+  - bioconda
 dependencies:
-  - conda-forge::biopython=1.70
+  - conda-forge::biopython=1.79
   - conda-forge::python-levenshtein=0.12.0
   - conda-forge::numpy=1.19.2
-  - bioconda::minimap2=2.17
+  - bioconda::minimap2=2.20
+

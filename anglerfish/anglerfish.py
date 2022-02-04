@@ -11,8 +11,8 @@ import numpy as np
 from datetime import datetime as dt
 from itertools import groupby
 from collections import Counter
-from demux.demux import run_minimap2, parse_paf_lines, layout_matches, cluster_matches, write_demuxedfastq
-from demux.samplesheet import SampleSheet
+from .demux.demux import run_minimap2, parse_paf_lines, layout_matches, cluster_matches, write_demuxedfastq
+from .demux.samplesheet import SampleSheet
 import gzip
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger('anglerfish')
@@ -22,7 +22,7 @@ def run_demux(args):
 
     os.mkdir(args.out_fastq)
     ss = SampleSheet(args.samplesheet)
-    version = pkg_resources.get_distribution("anglerfish").version
+    version = pkg_resources.get_distribution("bio-anglerfish").version
     log.info(" version {}".format(version))
     log.info(" arguments {}".format(vars(args)))
     bc_dist = ss.minimum_bc_distance()
@@ -118,7 +118,7 @@ def run_demux(args):
 
     header1 = ["sample_name","#reads","mean_read_len","std_read_len"]
     header2 = ["undetermined_index","count"]
-    json_out = {"angerfish_version":version,"paf_stats": [], "sample_stats": [], "undetermined": []}
+    json_out = {"anglerfish_version":version,"paf_stats": [], "sample_stats": [], "undetermined": []}
     with open(os.path.join(args.out_fastq,"anglerfish_stats.txt"), "w") as f:
         f.write("Anglerfish v. "+version+"\n===================\n")
         for key, line in paf_stats.items():
@@ -142,7 +142,7 @@ def run_demux(args):
         log.warning(" As of version 0.4.1, built in support for FastQC + MultiQC is removed. The '-f' flag is redundant.")
 
 
-if __name__ == "__main__":
+def anglerfish():
     parser = argparse.ArgumentParser(description='Tools to demux I7 and I5 barcodes when sequenced by single-molecules')
     parser.add_argument('--samplesheet', '-s', required=True, help='CSV formatted list of samples and barcodes')
     parser.add_argument('--out_fastq', '-o', default='.', help='Analysis output folder (default: Current dir)')

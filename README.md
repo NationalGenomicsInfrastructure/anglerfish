@@ -1,6 +1,7 @@
 # Anglerfish
-
 [![Anglerfish CI Status](https://github.com/remiolsen/anglerfish/workflows/Anglerfish/badge.svg)](https://github.com/remiolsen/anglerfish/actions)
+[![PyPI](https://img.shields.io/pypi/v/bio-anglerfish)](https://pypi.python.org/pypi/bio-anglerfish/)
+[![Conda (channel only)](https://img.shields.io/conda/vn/bioconda/anglerfish)](https://anaconda.org/bioconda/anglerfish)
 [![Docker Container available](https://img.shields.io/docker/automated/remiolsen/anglerfish.svg)](https://hub.docker.com/r/remiolsen/anglerfish/)
 
 
@@ -16,7 +17,7 @@ For more information on how this can be used, please see this [poster](docs/AGBT
 
 ### Requirements
 
-* Python3 (3.6)
+* Python3 (3.7)
 
 Python modules:
 
@@ -26,12 +27,18 @@ Python modules:
 
 Software:
 
-* minimap2 v. 2.17
+* minimap2 v. 2.20
 
-### Manually using pip
+### From PyPi
 
 ```
-pip install --upgrade --force-reinstall git+https://github.com/remiolsen/anglerfish.git
+pip install bio-anglerfish
+```
+
+### From Bioconda
+
+```
+conda install -c bioconda multiqc
 ```
 
 ### Manually with Conda
@@ -47,10 +54,10 @@ conda env create -f environment.yml
 pip install -e .
 ```
 
-### Docker
+### Development version
 
 ```
-docker pull remiolsen/anglerfish:<version>
+pip install --upgrade --force-reinstall git+https://github.com/remiolsen/anglerfish.git
 ```
 
 ## Usage
@@ -82,7 +89,7 @@ P12345_101,truseq,CAGGACGT,/path/to/ONTreads.fastq.gz
 Then run:
 
 ```
-anglerfish.py -s /path/to/samples.csv
+anglerfish -s /path/to/samples.csv
 ```
 
 ### Optional
