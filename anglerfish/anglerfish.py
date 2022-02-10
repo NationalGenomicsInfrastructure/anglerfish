@@ -161,6 +161,7 @@ def anglerfish():
     parser.add_argument('--skip_fastqc', '-f', action='store_true', help=argparse.SUPPRESS)
     parser.add_argument('--max-distance', '-m', type=int, help='Manually set maximum edit distance for BC matching, automatically set this is set to either 1 or 2')
     parser.add_argument('--debug', '-d', action='store_true', help='Extra commandline output')
+    parser.add_argument('--version', '-v', action='version', help='Print version and quit', version='anglerfish {}'.format(pkg_resources.get_distribution("bio-anglerfish").version))
     args = parser.parse_args()
     utcnow = dt.utcnow()
     runname = utcnow.strftime("anglerfish_%Y_%m_%d_%H%M%S")
