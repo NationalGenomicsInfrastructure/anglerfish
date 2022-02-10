@@ -8,6 +8,7 @@ import os
 import json
 import pkg_resources
 import numpy as np
+import uuid
 from datetime import datetime as dt
 from itertools import groupby
 from collections import Counter
@@ -20,11 +21,13 @@ log = logging.getLogger('anglerfish')
 
 def run_demux(args):
 
+    run_uuid = str(uuid.uuid4())
     os.mkdir(args.out_fastq)
     ss = SampleSheet(args.samplesheet)
     version = pkg_resources.get_distribution("bio-anglerfish").version
     log.info(" version {}".format(version))
     log.info(" arguments {}".format(vars(args)))
+    log.info(" run uuid {}".format(run_uuid))
     bc_dist = ss.minimum_bc_distance()
     if bc_dist == 0:
         log.error("There is one or more identical barcodes in the input samplesheet. Aborting!")
@@ -118,9 +121,16 @@ def run_demux(args):
 
     header1 = ["sample_name","#reads","mean_read_len","std_read_len"]
     header2 = ["undetermined_index","count"]
-    json_out = {"anglerfish_version":version,"paf_stats": [], "sample_stats": [], "undetermined": []}
+    json_out = {
+        "anglerfish_version":version,
+        "run_name": args.run_name,
+        "run_uuid": run_uuid,
+        "paf_stats": [],
+        "sample_stats": [],
+        "undetermined": []
+    }
     with open(os.path.join(args.out_fastq,"anglerfish_stats.txt"), "w") as f:
-        f.write("Anglerfish v. "+version+"\n===================\n")
+        f.write(f"Anglerfish v. {version} (run: {args.run_name}, {run_uuid})\n===================\n")
         for key, line in paf_stats.items():
             f.write(f"{key}:\n")
             for i,j in line.items():
@@ -151,6 +161,7 @@ def anglerfish():
     parser.add_argument('--skip_fastqc', '-f', action='store_true', help=argparse.SUPPRESS)
     parser.add_argument('--max-distance', '-m', type=int, help='Manually set maximum edit distance for BC matching, automatically set this is set to either 1 or 2')
     parser.add_argument('--debug', '-d', action='store_true', help='Extra commandline output')
+    parser.add_argument('--version', '-v', action='version', help='Print version and quit', version='anglerfish {}'.format(pkg_resources.get_distribution("bio-anglerfish").version))
     args = parser.parse_args()
     utcnow = dt.utcnow()
     runname = utcnow.strftime("anglerfish_%Y_%m_%d_%H%M%S")
@@ -159,4 +170,5 @@ def anglerfish():
     assert os.path.exists(args.samplesheet)
     args.out_fastq = os.path.join(os.path.abspath(args.out_fastq),runname)
     args.samplesheet = os.path.abspath(args.samplesheet)
+    args.run_name = runname
     run_demux(args)

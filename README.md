@@ -38,7 +38,7 @@ pip install bio-anglerfish
 ### From Bioconda
 
 ```
-conda install -c bioconda multiqc
+conda install -c bioconda anglerfish
 ```
 
 ### Manually with Conda
