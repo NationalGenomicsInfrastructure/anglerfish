@@ -15,7 +15,7 @@ setup(
     install_requires=[
         'python-levenshtein==0.12.1',
         'biopython==1.79',
-        'numpy==1.21.0'
+        'numpy==1.22.0'
     ],
     entry_points={
         "console_scripts": [
