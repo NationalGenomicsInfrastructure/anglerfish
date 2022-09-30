@@ -7,45 +7,38 @@ from itertools import combinations
 import yaml
 
 
-delim = "-NNN-"
+
 with open("config/adaptors.yaml", "r") as file:
     adaptors = yaml.safe_load(file)
-# Convert adapters from strings to lists and replace index delimiter with bool
-for type in adaptors:
-    for i in ["i5", "i7"]:
-        if delim in adaptors[type][i]:
-            adaptors[type][i] = adaptors[type][i].split(delim)
-            adaptors[type][i].insert(1, True)
-        else:
-            adaptors[type][i] = [adaptors[type][i]]
+delim = "-NNN-"
 
 
 class Adaptor(object):
 
     def __init__(self, adaptor, i7_index=None, i5_index=None):
 
-        self.i5_list = adaptors[adaptor]["i5"]
-        self.i7_list = adaptors[adaptor]["i7"]
+        self.i5 = adaptors[adaptor]["i5"]
+        self.i7 = adaptors[adaptor]["i7"]
         self.i5_index = i5_index
         self.i7_index = i7_index
         self.name = "{}_len{}".format(adaptor, len(i7_index))
 
-        if True in self.i5_list and i5_index is None:
+        if delim in self.i5 and i5_index is None:
             raise UserWarning("Adaptor has i5 but no sequence was specified")
-        if True in self.i7_list and i7_index is None:
+        if delim in self.i7 and i7_index is None:
             raise UserWarning("Adaptor has i7 but no sequence was specified")
 
     def get_i5_mask(self):
-        if True in self.i5_list:
-            return "".join(map(lambda x: "".join(["N"]*len(self.i5_index)) if x==True else x, self.i5_list))
+        if delim in self.i5:
+            return self.i5.replace(delim, "N"*len(self.i5_index))
         else:
-            return "".join(self.i5_list)
+            return self.i5
 
     def get_i7_mask(self):
-        if True in self.i7_list:
-            return "".join(map(lambda x: "".join(["N"]*len(self.i7_index)) if x==True else x, self.i7_list))
+        if delim in self.i7:
+            return self.i7.replace(delim, "N"*len(self.i7_index))
         else:
-            return "".join(self.i7_list)
+            return self.i7
 
 
 
