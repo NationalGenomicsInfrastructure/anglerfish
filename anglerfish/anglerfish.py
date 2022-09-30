@@ -25,9 +25,9 @@ def run_demux(args):
     os.mkdir(args.out_fastq)
     ss = SampleSheet(args.samplesheet)
     version = pkg_resources.get_distribution("bio-anglerfish").version
-    log.info(" version {}".format(version))
-    log.info(" arguments {}".format(vars(args)))
-    log.info(" run uuid {}".format(run_uuid))
+    log.info(f" version {version}")
+    log.info(f" arguments {vars(args)}")
+    log.info(f" run uuid {run_uuid}")
     bc_dist = ss.minimum_bc_distance()
     if bc_dist == 0:
         log.error("There is one or more identical barcodes in the input samplesheet. Aborting!")
@@ -37,11 +37,11 @@ def run_demux(args):
             args.max_distance = 2
         else:
             args.max_distance = 1
-        log.info("Using maximum edit distance of {}".format(args.max_distance))
+        log.info(f"Using maximum edit distance of {args.max_distance}")
     if args.max_distance >= bc_dist:
-        log.error(" Edit distance of barcodes in samplesheet are less than the minimum specified {}>={}".format(args.max_distance, bc_dist))
+        log.error(f" Edit distance of barcodes in samplesheet are less than the minimum specified {args.max_distance}>={bc_dist}")
         exit()
-    log.debug("Samplesheet bc_dist == {}".format(bc_dist))
+    log.debug(f"Samplesheet bc_dist == {bc_dist}")
 
     # Sort the adaptors by type and size
     adaptors_t = [(adaptor.name, os.path.abspath(fastq)) for sample, adaptor, fastq in ss]
@@ -61,10 +61,10 @@ def run_demux(args):
         adaptor_name, fastq_path = key
         sample0_name, adaptor0_object = sample[0]
 
-        aln_name = "{}_{}".format(adaptor_name,os.path.basename(fastq_path).split('.')[0])
+        aln_name = f"{adaptor_name}_{os.path.basename(fastq_path).split('.')[0]}"
         assert aln_name not in paf_stats, "Input fastq files can not have the same filename"
-        aln_path = os.path.join(args.out_fastq, "{}.paf".format(aln_name))
-        adaptor_path = os.path.join(args.out_fastq,"{}.fasta".format(adaptor_name))
+        aln_path = os.path.join(args.out_fastq, f"{aln_name}.paf")
+        adaptor_path = os.path.join(args.out_fastq,f"{adaptor_name}.fasta")
         with open(adaptor_path, "w") as f:
             f.write(ss.get_fastastring(adaptor_name))
         retcode = run_minimap2(fastq_path, adaptor_path, aln_path, args.threads)
@@ -105,7 +105,7 @@ def run_demux(args):
             rmean = np.round(np.mean(rlens),2)
             rstd = np.round(np.std(rlens),2)
 
-            sample_stats.append("{}\t{}\t{}\t{}".format(k, len(sample_dict.keys()), rmean, rstd))
+            sample_stats.append(f"{k}\t{len(sample_dict.keys())}\t{rmean}\t{rstd}")
             if not args.skip_demux:
                 write_demuxedfastq(sample_dict, fastq_path, fq_name)
 
@@ -113,7 +113,7 @@ def run_demux(args):
         # Check if there were samples in the samplesheet without adaptor alignments
         for ss_sample, ss_adaptor, ss_path in ss:
             if ss_adaptor.name == adaptor and ss_sample not in aligned_samples:
-                sample_stats.append("{}\t0".format(ss_sample))
+                sample_stats.append(f"{ss_sample}\t0")
 
         # Top unmatched indexes
         nomatch_count = Counter([x[3] for x in no_matches])
@@ -136,14 +136,14 @@ def run_demux(args):
             for i,j in line.items():
                 f.write(f"{j[0]}\t{i} ({j[1]*100:.2f}%)\n")
             json_out["paf_stats"].append(line)
-        f.write("\n{}\n".format("\t".join(header1)))
+        f.write(f"\n{'\t'.join(header1)}\n")
         for sample in sample_stats:
             f.write(sample+"\n")
             json_out["sample_stats"].append(dict(zip(header1,sample.split("\t"))))
-        f.write("\n{}\n".format("\t".join(header2)))
+        f.write(f"\n{'\t'.join(header2)}\n")
         for unmatch in unmatched_stats:
             for idx, mnum in unmatch:
-                f.write("{}\t{}\n".format(idx, mnum))
+                f.write(f"{idx}\t{mnum}\n")
                 json_out["undetermined"].append(dict(zip(header2,[idx, mnum])))
 
     with open(os.path.join(args.out_fastq,"anglerfish_stats.json"), "w") as f:
@@ -163,7 +163,7 @@ def anglerfish():
     parser.add_argument('--max-unknowns', '-u', type=int, default=10, help='Maximum number of unknown indices to show in the output (default: 10)')
     parser.add_argument('--run_name', '-r', default='anglerfish', help='Name of the run (default: anglerfish)')
     parser.add_argument('--debug', '-d', action='store_true', help='Extra commandline output')
-    parser.add_argument('--version', '-v', action='version', help='Print version and quit', version='anglerfish {}'.format(pkg_resources.get_distribution("bio-anglerfish").version))
+    parser.add_argument('--version', '-v', action='version', help='Print version and quit', version=f'anglerfish {pkg_resources.get_distribution("bio-anglerfish").version}')
     args = parser.parse_args()
     utcnow = dt.utcnow()
     runname = utcnow.strftime(f"{args.run_name}_%Y_%m_%d_%H%M%S")

@@ -31,7 +31,7 @@ class Adaptor(object):
         self.i7_list = adaptors[adaptor]["i7"]
         self.i5_index = i5_index
         self.i7_index = i7_index
-        self.name = "{}_len{}".format(adaptor, len(i7_index))
+        self.name = f"{adaptor}_len{len(i7_index)}"
 
         if True in self.i5_list and i5_index is None:
             raise UserWarning("Adaptor has i5 but no sequence was specified")
@@ -70,7 +70,7 @@ class SampleSheet(object):
             rn = 1
             for row in data:
                 if row['adaptors'] not in adaptors:
-                    raise UserWarning("'{}' not in the list of valid adaptors: {}".format(row['adaptors'],adaptors.keys()))
+                    raise UserWarning(f"'{row['adaptors']}' not in the list of valid adaptors: {adaptors.keys()}")
                 i7i5 = row["index"].split("-")
                 i7 = i7i5[0]; i5 = None
                 if len(i7i5) > 1:
@@ -129,7 +129,7 @@ class SampleSheet(object):
 
         outstr = ""
         for key, seq in fastas.items():
-            outstr += ">{}\n{}\n".format(key,seq)
+            outstr += f">{key}\n{seq}\n"
 
         return outstr
 
