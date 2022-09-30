@@ -4,25 +4,22 @@ import csv
 import Levenshtein as lev
 import os
 from itertools import combinations
+import yaml
 
-adaptors = {
-    "truseq": {
-                "i5": ["AATGATACGGCGACCACCGAGATCTACACTCTTTCCCTACACGACGCTCTTCCGATCT"],
-                "i7": ["GATCGGAAGAGCACACGTCTGAACTCCAGTCAC",True,"ATCTCGTATGCCGTCTTCTGCTTG"]
-    },
-    "truseq_dual": {
-                "i5": ["AATGATACGGCGACCACCGAGATCTACAC",True,"ACACTCTTTCCCTACACGACGCTCTTCCGATCT"],
-                "i7": ["GATCGGAAGAGCACACGTCTGAACTCCAGTCAC",True,"ATCTCGTATGCCGTCTTCTGCTTG"]
-    },
-    "nextera_legacy": {
-                "i5": ["AATGATACGGCGACCACCGAGATCTACACGCCTCCCTCGCGCCATCAG"],
-                "i7": ["CAAGCAGAAGACGGCATACGAGAT",True,"CGGTCTGCCTTGCCAGCCCGCTCAG"]
-    },
-    "nextera_dual": {
-                "i5": ["AATGATACGGCGACCACCGAGATCTACAC",True,"GTCTCGTGGGCTCGG"],
-                "i7": ["CAAGCAGAAGACGGCATACGAGAT",True,"ATCTCGTATGCCGTCTTCTGCTTG"]
-    },
-}
+
+delim = "-NNN-"
+with open("config/adaptors.yaml", "r") as file:
+    adaptors = yaml.safe_load(file)
+# Convert adapters from strings to lists and replace index delimiter with bool
+for type in adaptors:
+    for i in ["i5", "i7"]:
+        if delim in adaptors[type][i]:
+            adaptors[type][i] = adaptors[type][i].split(delim)
+            adaptors[type][i].insert(1, True)
+        else:
+            adaptors[type][i] = [adaptors[type][i]]
+
+
 class Adaptor(object):
 
     def __init__(self, adaptor, i7_index=None, i5_index=None):
