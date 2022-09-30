@@ -105,7 +105,7 @@ def run_demux(args):
             rmean = np.round(np.mean(rlens),2)
             rstd = np.round(np.std(rlens),2)
 
-            sample_stats.append(f"{k}\t{len(sample_dict.keys())}\t{rmean}\t{rstd}")
+            sample_stats.append("{}\t{}\t{}\t{}".format(k, len(sample_dict.keys()), rmean, rstd))
             if not args.skip_demux:
                 write_demuxedfastq(sample_dict, fastq_path, fq_name)
 
@@ -113,7 +113,7 @@ def run_demux(args):
         # Check if there were samples in the samplesheet without adaptor alignments
         for ss_sample, ss_adaptor, ss_path in ss:
             if ss_adaptor.name == adaptor and ss_sample not in aligned_samples:
-                sample_stats.append(f"{ss_sample}\t0")
+                sample_stats.append("{}\t0".format(ss_sample))
 
         # Top unmatched indexes
         nomatch_count = Counter([x[3] for x in no_matches])
@@ -136,14 +136,14 @@ def run_demux(args):
             for i,j in line.items():
                 f.write(f"{j[0]}\t{i} ({j[1]*100:.2f}%)\n")
             json_out["paf_stats"].append(line)
-        f.write(f"\n{'\t'.join(header1)}\n")
+        f.write("\n{}\n".format("\t".join(header1)))
         for sample in sample_stats:
             f.write(sample+"\n")
             json_out["sample_stats"].append(dict(zip(header1,sample.split("\t"))))
-        f.write(f"\n{'\t'.join(header2)}\n")
+        f.write("\n{}\n".format("\t".join(header2)))
         for unmatch in unmatched_stats:
             for idx, mnum in unmatch:
-                f.write(f"{idx}\t{mnum}\n")
+                f.write("{}\t{}\n".format(idx, mnum))
                 json_out["undetermined"].append(dict(zip(header2,[idx, mnum])))
 
     with open(os.path.join(args.out_fastq,"anglerfish_stats.json"), "w") as f:

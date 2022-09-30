@@ -129,7 +129,7 @@ class SampleSheet(object):
 
         outstr = ""
         for key, seq in fastas.items():
-            outstr += f">{key}\n{seq}\n"
+            outstr += ">{}\n{}\n".format(key,seq)
 
         return outstr
 

@@ -194,8 +194,8 @@ def write_demuxedfastq(beds, fastq_in, fastq_out):
                     for bed in beds[new_title[0]]:
 
                         new_title[0] += "_"+bed[3]
-                        outfqs += f"@{' '.join(new_title)}\n"
-                        outfqs += f"{seq[bed[1]:bed[2]]}\n"
+                        outfqs += "@{}\n".format(" ".join(new_title))
+                        outfqs += "{}\n".format(seq[bed[1]:bed[2]])
                         outfqs += "+\n"
-                        outfqs += f"{qual[bed[1]:bed[2]]}\n"
+                        outfqs += "{}\n".format(qual[bed[1]:bed[2]])
                     oz.stdin.write(outfqs.encode('utf-8'))
