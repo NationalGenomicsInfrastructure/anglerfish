@@ -1,0 +1,23 @@
+# CSV formatted list of samples and barcodes
+samplesheet (-s): 
+
+# Analysis output folder (default: Current dir)         
+out_fastq (-o): 
+
+# Number of threads to use (default: 4)          
+threads (-t): 
+
+# Only do BC counting and not demuxing (True / False) 
+skip_demux (-c): 
+
+# Manually set maximum edit distance for BC matching, automatically set this is set to either 1 or 2
+max-distance (-m): 
+                    
+# Maximum number of unknown indices to show in the output (default: 10)
+max-unknowns (-u): 
+
+# Name of the run (default: anglerfish)
+run_name (-r): 
+
+# Extra commandline output
+debug (-d): 
