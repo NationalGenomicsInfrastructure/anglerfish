@@ -5,11 +5,12 @@ import Levenshtein as lev
 import os
 from itertools import combinations
 import yaml
+from pkg_resources import resource_stream
 
 
 
-with open("config/adaptors.yaml", "r") as file:
-    adaptors = yaml.safe_load(file)
+with resource_stream("anglerfish", 'config/adaptors.yaml') as stream:
+    adaptors = yaml.safe_load(stream)
 delim = "-NNN-"
 
 

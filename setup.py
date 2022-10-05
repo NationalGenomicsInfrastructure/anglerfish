@@ -12,6 +12,8 @@ setup(
     license='MIT',
     python_requires=">=3.7",
     packages = find_packages(),
+    include_package_data = True,
+    package_data={'anglerfish': ['config/adaptors.yaml']},
     install_requires=[
         'python-levenshtein==0.12.1',
         'biopython==1.79',
