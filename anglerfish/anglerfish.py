@@ -117,7 +117,7 @@ def run_demux(args):
 
         # Top unmatched indexes
         nomatch_count = Counter([x[3] for x in no_matches])
-        unmatched_stats.append(nomatch_count.most_common(10))
+        unmatched_stats.append(nomatch_count.most_common(args.max_unknowns))
 
     header1 = ["sample_name","#reads","mean_read_len","std_read_len"]
     header2 = ["undetermined_index","count"]
@@ -160,11 +160,13 @@ def anglerfish():
     parser.add_argument('--skip_demux', '-c', action='store_true', help='Only do BC counting and not demuxing')
     parser.add_argument('--skip_fastqc', '-f', action='store_true', help=argparse.SUPPRESS)
     parser.add_argument('--max-distance', '-m', type=int, help='Manually set maximum edit distance for BC matching, automatically set this is set to either 1 or 2')
+    parser.add_argument('--max-unknowns', '-u', type=int, default=10, help='Maximum number of unknown indices to show in the output (default: 10)')
+    parser.add_argument('--run_name', '-r', default='anglerfish', help='Name of the run (default: anglerfish)')
     parser.add_argument('--debug', '-d', action='store_true', help='Extra commandline output')
     parser.add_argument('--version', '-v', action='version', help='Print version and quit', version='anglerfish {}'.format(pkg_resources.get_distribution("bio-anglerfish").version))
     args = parser.parse_args()
     utcnow = dt.utcnow()
-    runname = utcnow.strftime("anglerfish_%Y_%m_%d_%H%M%S")
+    runname = utcnow.strftime(f"{args.run_name}_%Y_%m_%d_%H%M%S")
 
     assert os.path.exists(args.out_fastq)
     assert os.path.exists(args.samplesheet)
