@@ -4,51 +4,42 @@ import csv
 import Levenshtein as lev
 import os
 from itertools import combinations
+import yaml
+import importlib.resources
 
-adaptors = {
-    "truseq": {
-                "i5": ["AATGATACGGCGACCACCGAGATCTACACTCTTTCCCTACACGACGCTCTTCCGATCT"],
-                "i7": ["GATCGGAAGAGCACACGTCTGAACTCCAGTCAC",True,"ATCTCGTATGCCGTCTTCTGCTTG"]
-    },
-    "truseq_dual": {
-                "i5": ["AATGATACGGCGACCACCGAGATCTACAC",True,"ACACTCTTTCCCTACACGACGCTCTTCCGATCT"],
-                "i7": ["GATCGGAAGAGCACACGTCTGAACTCCAGTCAC",True,"ATCTCGTATGCCGTCTTCTGCTTG"]
-    },
-    "nextera_legacy": {
-                "i5": ["AATGATACGGCGACCACCGAGATCTACACGCCTCCCTCGCGCCATCAG"],
-                "i7": ["CAAGCAGAAGACGGCATACGAGAT",True,"CGGTCTGCCTTGCCAGCCCGCTCAG"]
-    },
-    "nextera_dual": {
-                "i5": ["AATGATACGGCGACCACCGAGATCTACAC",True,"GTCTCGTGGGCTCGG"],
-                "i7": ["CAAGCAGAAGACGGCATACGAGAT",True,"ATCTCGTATGCCGTCTTCTGCTTG"]
-    },
-}
+
+p = importlib.resources.files("anglerfish.config").joinpath("adaptors.yaml")
+with open(p, "r") as stream:
+    adaptors = yaml.safe_load(stream)
+delim = "-NNN-"
+
+
 class Adaptor(object):
 
     def __init__(self, adaptor, i7_index=None, i5_index=None):
 
-        self.i5_list = adaptors[adaptor]["i5"]
-        self.i7_list = adaptors[adaptor]["i7"]
+        self.i5 = adaptors[adaptor]["i5"]
+        self.i7 = adaptors[adaptor]["i7"]
         self.i5_index = i5_index
         self.i7_index = i7_index
-        self.name = "{}_len{}".format(adaptor, len(i7_index))
+        self.name = f"{adaptor}_len{len(i7_index)}"
 
-        if True in self.i5_list and i5_index is None:
+        if delim in self.i5 and i5_index is None:
             raise UserWarning("Adaptor has i5 but no sequence was specified")
-        if True in self.i7_list and i7_index is None:
+        if delim in self.i7 and i7_index is None:
             raise UserWarning("Adaptor has i7 but no sequence was specified")
 
     def get_i5_mask(self):
-        if True in self.i5_list:
-            return "".join(map(lambda x: "".join(["N"]*len(self.i5_index)) if x==True else x, self.i5_list))
+        if delim in self.i5:
+            return self.i5.replace(delim, "N"*len(self.i5_index))
         else:
-            return "".join(self.i5_list)
+            return self.i5
 
     def get_i7_mask(self):
-        if True in self.i7_list:
-            return "".join(map(lambda x: "".join(["N"]*len(self.i7_index)) if x==True else x, self.i7_list))
+        if delim in self.i7:
+            return self.i7.replace(delim, "N"*len(self.i7_index))
         else:
-            return "".join(self.i7_list)
+            return self.i7
 
 
 
@@ -70,7 +61,7 @@ class SampleSheet(object):
             rn = 1
             for row in data:
                 if row['adaptors'] not in adaptors:
-                    raise UserWarning("'{}' not in the list of valid adaptors: {}".format(row['adaptors'],adaptors.keys()))
+                    raise UserWarning(f"'{row['adaptors']}' not in the list of valid adaptors: {adaptors.keys()}")
                 i7i5 = row["index"].split("-")
                 i7 = i7i5[0]; i5 = None
                 if len(i7i5) > 1:

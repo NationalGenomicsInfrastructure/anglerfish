@@ -73,11 +73,11 @@ def parse_paf_lines(paf, min_qual=10):
                         }
                 read = aln[0]
             except IndexError:
-                log.debug("Could not find all paf columns: {}".format(read))
+                log.debug(f"Could not find all paf columns: {read}")
                 continue
 
             if entry["q"] < min_qual:
-                log.debug("Low quality alignment: {}".format(read))
+                log.debug(f"Low quality alignment: {read}")
                 continue
 
             if read in entries.keys():
