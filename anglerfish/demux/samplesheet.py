@@ -8,7 +8,7 @@ import yaml
 import importlib.resources
 
 
-p = importlib.resources.files("anglerfish").joinpath("config/adaptors.yaml")
+p = importlib.resources.files("anglerfish.config").joinpath("adaptors.yaml")
 with open(p, "r") as stream:
     adaptors = yaml.safe_load(stream)
 delim = "-NNN-"
