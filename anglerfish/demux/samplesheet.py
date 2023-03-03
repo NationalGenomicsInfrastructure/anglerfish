@@ -3,6 +3,7 @@ from __future__ import print_function
 import csv
 import Levenshtein as lev
 import os
+import glob
 from itertools import combinations
 import yaml
 import importlib.resources
@@ -71,7 +72,7 @@ class SampleSheet(object):
                 # TODO: find a more clever way of resolving duplicate names
                 if row['sample_name'] in [sn[0] for sn in self.samplesheet]:
                     sample_name = sample_name+"_row"+str(rn)
-                assert os.path.exists(row['fastq_path']) == 1
+                assert len(glob.glob(row['fastq_path'])) > 0
                 self.samplesheet.append((sample_name, Adaptor(row['adaptors'], i7, i5),row['fastq_path']))
                 rn += 1
         except:

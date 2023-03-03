@@ -1,9 +1,7 @@
 #!/usr/bin/env python
-from __future__ import absolute_import
-from __future__ import print_function
 import argparse
 import logging
-import sys
+import glob
 import os
 import json
 import pkg_resources
@@ -44,7 +42,7 @@ def run_demux(args):
     log.debug(f"Samplesheet bc_dist == {bc_dist}")
 
     # Sort the adaptors by type and size
-    adaptors_t = [(adaptor.name, os.path.abspath(fastq)) for sample, adaptor, fastq in ss]
+    adaptors_t = [(adaptor.name, os.path.abspath(fastq)) for _, adaptor, fastq in ss]
     adaptor_set = set(adaptors_t)
     adaptors_sorted = dict([(i, []) for i in adaptor_set])
     for sample, adaptor, fastq in ss:
@@ -56,27 +54,36 @@ def run_demux(args):
     out_fastqs = []
     all_samples = []
 
+    # TODO: Refactor giant for loop
+    paf_no = 0
     for key, sample in adaptors_sorted.items():
 
         adaptor_name, fastq_path = key
-        sample0_name, adaptor0_object = sample[0]
+        fastq_files = glob.glob(fastq_path)
 
-        aln_name = f"{adaptor_name}_{os.path.basename(fastq_path).split('.')[0]}"
-        assert aln_name not in paf_stats, "Input fastq files can not have the same filename"
+        aln_name = adaptor_name
+        if aln_name in paf_stats:
+            aln_name = f"{aln_name}_{paf_no}"
+            paf_no += 1
+        else: 
+            paf_no = 0
         aln_path = os.path.join(args.out_fastq, f"{aln_name}.paf")
         adaptor_path = os.path.join(args.out_fastq,f"{adaptor_name}.fasta")
         with open(adaptor_path, "w") as f:
             f.write(ss.get_fastastring(adaptor_name))
-        retcode = run_minimap2(fastq_path, adaptor_path, aln_path, args.threads)
+        for fq in fastq_files:
+            retcode = run_minimap2(fq, adaptor_path, aln_path, args.threads)
 
-        # Easy line count in input fastqfile
+        # Easy line count in input fastqfiles
         fq_entries = 0
-        with gzip.open(fastq_path, 'rb') as f:
-            for i in f:
-                fq_entries += 1
+        for fq in fastq_files:
+            with gzip.open(fq, 'rb') as f:
+                for i in f:
+                    fq_entries += 1
         fq_entries = int(fq_entries / 4)
         paf_entries = parse_paf_lines(aln_path)
 
+        # Make stats
         fragments, singletons, concats, unknowns = layout_matches(adaptor_name+"_i5",adaptor_name+"_i7",paf_entries)
         total = len(fragments)+len(singletons)+len(concats)+len(unknowns)
 
@@ -87,7 +94,6 @@ def run_demux(args):
         paf_stats[aln_name]["aligned reads matching only I7 or I5 adaptor"] = [len(singletons), len(singletons)/float(total)]
         paf_stats[aln_name]["aligned reads matching multiple I7/I5 adaptor pairs"] = [len(concats), len(concats)/float(total)]
         paf_stats[aln_name]["aligned reads with uncategorized alignments"] = [len(unknowns), len(unknowns)/float(total)]
-
         no_matches, matches = cluster_matches(adaptors_sorted[key], adaptor_name, fragments, args.max_distance)
 
         aligned_samples = []

@@ -1,11 +1,9 @@
 from __future__ import absolute_import
 from __future__ import print_function
-import os
-import sys
+import glob
 import re
 import logging
 import Levenshtein as lev
-import itertools
 import subprocess
 import io
 from Bio.SeqIO.QualityIO import FastqGeneralIterator
@@ -41,13 +39,13 @@ def run_minimap2(fastq_in, indexfile, output_paf, threads):
         "--dual=no",
         "-c",
         "-t", str(threads),
-        "-o", output_paf,
         indexfile,
         fastq_in
     ]
 
-    proc = subprocess.run(cmd, check=True)
-    return proc.returncode
+    with open(output_paf, "ab") as ofile:
+        proc = subprocess.run(cmd, stdout=ofile, check=True)
+
 
 
 def parse_paf_lines(paf, min_qual=10):
@@ -179,23 +177,25 @@ def write_demuxedfastq(beds, fastq_in, fastq_out):
     # from over a set of fastq entries in the input files and do extraction.
     # TODO: Can be optimized using pigz or rewritten using python threading
     gz_buf = 131072
-    with subprocess.Popen(["gzip", "-c", "-d", fastq_in],
-            stdout=subprocess.PIPE, bufsize=gz_buf) as fzi:
-        fi = io.TextIOWrapper(fzi.stdout, write_through=True)
-        with open(fastq_out, 'wb') as ofile:
-            with subprocess.Popen(["gzip", "-c", "-f"],
-                    stdin=subprocess.PIPE, stdout=ofile, bufsize=gz_buf, close_fds=False) as oz:
+    fq_files = glob.glob(fastq_in)
+    for fq in fq_files:
+        with subprocess.Popen(["gzip", "-c", "-d", fq],
+                stdout=subprocess.PIPE, bufsize=gz_buf) as fzi:
+            fi = io.TextIOWrapper(fzi.stdout, write_through=True)
+            with open(fastq_out, 'ab') as ofile:
+                with subprocess.Popen(["gzip", "-c", "-f"],
+                        stdin=subprocess.PIPE, stdout=ofile, bufsize=gz_buf, close_fds=False) as oz:
 
-                for title, seq, qual in FastqGeneralIterator(fi):
-                    new_title = title.split()
-                    if new_title[0] not in beds.keys():
-                        continue
-                    outfqs = ""
-                    for bed in beds[new_title[0]]:
+                    for title, seq, qual in FastqGeneralIterator(fi):
+                        new_title = title.split()
+                        if new_title[0] not in beds.keys():
+                            continue
+                        outfqs = ""
+                        for bed in beds[new_title[0]]:
 
-                        new_title[0] += "_"+bed[3]
-                        outfqs += "@{}\n".format(" ".join(new_title))
-                        outfqs += "{}\n".format(seq[bed[1]:bed[2]])
-                        outfqs += "+\n"
-                        outfqs += "{}\n".format(qual[bed[1]:bed[2]])
-                    oz.stdin.write(outfqs.encode('utf-8'))
+                            new_title[0] += "_"+bed[3]
+                            outfqs += "@{}\n".format(" ".join(new_title))
+                            outfqs += "{}\n".format(seq[bed[1]:bed[2]])
+                            outfqs += "+\n"
+                            outfqs += "{}\n".format(qual[bed[1]:bed[2]])
+                        oz.stdin.write(outfqs.encode('utf-8'))
