@@ -2,7 +2,6 @@ from __future__ import absolute_import
 from __future__ import print_function
 import csv
 import Levenshtein as lev
-import os
 import glob
 from itertools import combinations
 import yaml
@@ -43,9 +42,7 @@ class Adaptor(object):
             return self.i7
 
 
-
 class SampleSheet(object):
-
 
     def __init__(self, input_csv):
 
@@ -60,6 +57,8 @@ class SampleSheet(object):
             data = csv.DictReader(csvfile,
                 fieldnames=['sample_name', 'adaptors', 'index', 'fastq_path'], dialect=dialect)
             rn = 1
+
+            test_globs = {}
             for row in data:
                 if row['adaptors'] not in adaptors:
                     raise UserWarning(f"'{row['adaptors']}' not in the list of valid adaptors: {adaptors.keys()}")
@@ -69,12 +68,17 @@ class SampleSheet(object):
                     i5 = i7i5[1]
 
                 sample_name = row['sample_name']
-                # TODO: find a more clever way of resolving duplicate names
                 if row['sample_name'] in [sn[0] for sn in self.samplesheet]:
                     sample_name = sample_name+"_row"+str(rn)
                 assert len(glob.glob(row['fastq_path'])) > 0
+                test_globs[row['fastq_path']] = glob.glob(row['fastq_path'])
                 self.samplesheet.append((sample_name, Adaptor(row['adaptors'], i7, i5),row['fastq_path']))
                 rn += 1
+
+            # Explaination: Don't mess around with the globs too much.
+            for a,b in combinations(test_globs.values(), 2):
+                if len(set(a) & set(b)) > 0:
+                    raise UserWarning(f"Fastq paths are inconsistent. Please check samplesheet")
         except:
             raise
         finally:

@@ -55,19 +55,14 @@ def run_demux(args):
     all_samples = []
 
     # TODO: Refactor giant for loop
-    paf_no = 0
     for key, sample in adaptors_sorted.items():
 
         adaptor_name, fastq_path = key
         fastq_files = glob.glob(fastq_path)
 
-        aln_name = adaptor_name
-        if aln_name in paf_stats:
-            aln_name = f"{aln_name}_{paf_no}"
-            paf_no += 1
-        else: 
-            paf_no = 0
-        aln_path = os.path.join(args.out_fastq, f"{aln_name}.paf")
+        assert adaptor_name not in paf_stats, f"Duplicate adaptor name {adaptor_name} in samplesheet"
+
+        aln_path = os.path.join(args.out_fastq, f"{adaptor_name}.paf")
         adaptor_path = os.path.join(args.out_fastq,f"{adaptor_name}.fasta")
         with open(adaptor_path, "w") as f:
             f.write(ss.get_fastastring(adaptor_name))
@@ -87,13 +82,13 @@ def run_demux(args):
         fragments, singletons, concats, unknowns = layout_matches(adaptor_name+"_i5",adaptor_name+"_i7",paf_entries)
         total = len(fragments)+len(singletons)+len(concats)+len(unknowns)
 
-        paf_stats[aln_name] = {}
-        paf_stats[aln_name]["input_reads"] = [fq_entries, 1.0]
-        paf_stats[aln_name]["reads aligning to adaptor sequences"] = [total, total/float(fq_entries)]
-        paf_stats[aln_name]["aligned reads matching both I7 and I5 adaptor"] = [len(fragments), len(fragments)/float(total)]
-        paf_stats[aln_name]["aligned reads matching only I7 or I5 adaptor"] = [len(singletons), len(singletons)/float(total)]
-        paf_stats[aln_name]["aligned reads matching multiple I7/I5 adaptor pairs"] = [len(concats), len(concats)/float(total)]
-        paf_stats[aln_name]["aligned reads with uncategorized alignments"] = [len(unknowns), len(unknowns)/float(total)]
+        paf_stats[adaptor_name] = {}
+        paf_stats[adaptor_name]["input_reads"] = [fq_entries, 1.0]
+        paf_stats[adaptor_name]["reads aligning to adaptor sequences"] = [total, total/float(fq_entries)]
+        paf_stats[adaptor_name]["aligned reads matching both I7 and I5 adaptor"] = [len(fragments), len(fragments)/float(total)]
+        paf_stats[adaptor_name]["aligned reads matching only I7 or I5 adaptor"] = [len(singletons), len(singletons)/float(total)]
+        paf_stats[adaptor_name]["aligned reads matching multiple I7/I5 adaptor pairs"] = [len(concats), len(concats)/float(total)]
+        paf_stats[adaptor_name]["aligned reads with uncategorized alignments"] = [len(unknowns), len(unknowns)/float(total)]
         no_matches, matches = cluster_matches(adaptors_sorted[key], adaptor_name, fragments, args.max_distance)
 
         aligned_samples = []

@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-from __future__ import print_function
 import glob
 import re
 import logging
@@ -9,7 +7,6 @@ import io
 from Bio.SeqIO.QualityIO import FastqGeneralIterator
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger('demux')
-
 
 
 def parse_cs(cs_string, index, max_distance):
