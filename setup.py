@@ -12,6 +12,9 @@ Or from bioconda:
 """
 from setuptools import setup, find_packages
 import sys, os
+from pathlib import Path
+this_directory = Path(__file__).parent
+long_description = (this_directory / "README.md").read_text()
 
 version='0.5.0'
 
@@ -19,7 +22,8 @@ setup(
     name='bio-anglerfish',
     version=version,
     description='Anglerfish, a tool to demultiplex Illumina libraries from ONT data',
-    long_description=__doc__,
+    long_description=long_description,
+    long_description_content_type='text/markdown',
     author='Remi-Andre Olsen',
     author_email='remi-andre.olsen@scilifelab.se',
     url='https://github.com/remiolsen/anglerfish',
