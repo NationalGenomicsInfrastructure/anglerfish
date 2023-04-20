@@ -24,6 +24,7 @@ Python modules:
 * biopython v. 1.70
 * python-levenshtein v. 0.12.0
 * numpy v. 1.19.2
+* pyyaml v. 6.0
 
 Software:
 
