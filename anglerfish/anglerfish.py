@@ -89,7 +89,15 @@ def run_demux(args):
         paf_stats[adaptor_name]["aligned reads matching only I7 or I5 adaptor"] = [len(singletons), len(singletons)/float(total)]
         paf_stats[adaptor_name]["aligned reads matching multiple I7/I5 adaptor pairs"] = [len(concats), len(concats)/float(total)]
         paf_stats[adaptor_name]["aligned reads with uncategorized alignments"] = [len(unknowns), len(unknowns)/float(total)]
-        no_matches, matches = cluster_matches(adaptors_sorted[key], adaptor_name, fragments, args.max_distance)
+        no_matches, matches = cluster_matches(adaptors_sorted[key], fragments, args.max_distance)
+        flipped = False
+        if args.lenient:
+            rc_no_matches, rc_matches = cluster_matches(adaptors_sorted[key], fragments, args.max_distance, i5_reversed=True)
+            if len(rc_matches) * 0.2 > len(matches):
+                log.info(f"Reversing I5 index for adaptor {adaptor_name} found at least 80% more matches")
+                no_matches = rc_no_matches
+                matches = rc_matches
+                flipped = True
 
         aligned_samples = []
         for k, v in groupby(sorted(matches,key=lambda x: x[3]), key=lambda y: y[3]):
@@ -106,7 +114,7 @@ def run_demux(args):
             rmean = np.round(np.mean(rlens),2)
             rstd = np.round(np.std(rlens),2)
 
-            sample_stats.append("{}\t{}\t{}\t{}".format(k, len(sample_dict.keys()), rmean, rstd))
+            sample_stats.append("{}\t{}\t{}\t{}\t{}".format(k, len(sample_dict.keys()), rmean, rstd, flipped))
             if not args.skip_demux:
                 write_demuxedfastq(sample_dict, fastq_path, fq_name)
 
@@ -120,7 +128,7 @@ def run_demux(args):
         nomatch_count = Counter([x[3] for x in no_matches])
         unmatched_stats.append(nomatch_count.most_common(args.max_unknowns))
 
-    header1 = ["sample_name","#reads","mean_read_len","std_read_len"]
+    header1 = ["sample_name","#reads","mean_read_len","std_read_len","i5_reversed"]
     header2 = ["undetermined_index","count"]
     json_out = {
         "anglerfish_version":version,
@@ -163,6 +171,7 @@ def anglerfish():
     parser.add_argument('--max-distance', '-m', type=int, help='Manually set maximum edit distance for BC matching, automatically set this is set to either 1 or 2')
     parser.add_argument('--max-unknowns', '-u', type=int, default=10, help='Maximum number of unknown indices to show in the output (default: 10)')
     parser.add_argument('--run_name', '-r', default='anglerfish', help='Name of the run (default: anglerfish)')
+    parser.add_argument('--lenient', '-l', action='store_true', help='Will try reverse complementing the I5 index and choose the best match. USE WITH EXTREME CAUTION!')
     parser.add_argument('--debug', '-d', action='store_true', help='Extra commandline output')
     parser.add_argument('--version', '-v', action='version', help='Print version and quit', version=f'anglerfish {pkg_resources.get_distribution("bio-anglerfish").version}')
     args = parser.parse_args()

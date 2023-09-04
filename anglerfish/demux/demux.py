@@ -5,6 +5,7 @@ import Levenshtein as lev
 import subprocess
 import io
 from Bio.SeqIO.QualityIO import FastqGeneralIterator
+from Bio.Seq import Seq
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger('demux')
 
@@ -118,7 +119,7 @@ def layout_matches(i5_name, i7_name, paf_entries):
     return (fragments, singletons, concats, unknowns)
 
 
-def cluster_matches(sample_adaptor, adaptor_name, matches, max_distance):
+def cluster_matches(sample_adaptor, matches, max_distance, i5_reversed=False):
 
     # Only illumina fragments
     matched = {}; matched_bed = []; unmatched_bed = []
@@ -138,9 +139,12 @@ def cluster_matches(sample_adaptor, adaptor_name, matches, max_distance):
 
         dists = []
         fi5 = ""; fi7 = ""
-        for sample, adaptor in sample_adaptor:
+        for _, adaptor in sample_adaptor:
             try:
-                fi5, d1 = parse_cs(i5['cs'], adaptor.i5_index, max_distance)
+                i5_seq = adaptor.i5_index
+                if i5_reversed:
+                    i5_seq = str(Seq(i5_seq).reverse_complement())
+                fi5, d1 = parse_cs(i5['cs'], i5_seq, max_distance)
             except AttributeError:
                 d1 = 0 # presumably there it's single index
             fi7, d2 = parse_cs(i7['cs'], adaptor.i7_index, max_distance)
