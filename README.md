@@ -93,7 +93,9 @@ Then run:
 anglerfish -s /path/to/samples.csv
 ```
 
-### Optional
+### Options
+
+#### Common
 
 ```
 --out_fastq OUT_FASTQ, -o OUT_FASTQ
@@ -104,14 +106,27 @@ anglerfish -s /path/to/samples.csv
                       Number of threads to use (default: 4)
 --skip_demux, -c      Only do BC counting and not demuxing
 --max-distance MAX_DISTANCE, -m MAX_DISTANCE
-                      Manually set maximum edit distance for BC matching, automatically set this is set to either 1 or 2
+                       Manually set maximum edit distance for BC matching, automatically set this is set to either 1 or 2
+--run_name RUN_NAME, -r RUN_NAME
+                      Name of the run (default: anglerfish)
+--debug, -d           Extra commandline output
+--version, -v         Print version and quit
+
 ```
+
+#### `--max-unknowns`
+
+Anglerfish will try to recover indices which are not specified in the samplesheet but follow the specified adaptor setup(s). This is analogous to `undetermined indices` as reported by Illumina demultiplexing. `--max-unknowns` will set the number of such indices reported.
+
+#### `--lenient`
+
+This will consider both orientations of the I5 barcode and will use the reverse complement (of what was inputted in the samplesheet) only if significantly more reads were matched. This should be used with with extreme care, but the reason for this is that Anglerfish will try to guess which version of the Illumina samplesheet these indices were derived from. See this [guide](https://web.archive.org/web/20230602174828/https://knowledge.illumina.com/software/general/software-general-reference_material-list/000001800) for when i5 should be reverse complemented and not.
 
 ### Output files
 
 In folder `anglerfish_????_??_??_?????/`
 
-* `*.fastq.gz` Demultuplexed reads (if any)
+* `*.fastq.gz` Demultiplexed reads (if any)
 * `anglerfish_stats.txt` Barcode statistics from anglerfish run
 * `anglerfish_stats.json` Machine readable anglerfish statistics
 
