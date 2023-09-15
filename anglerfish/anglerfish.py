@@ -52,9 +52,7 @@ def run_demux(args):
         adaptors_sorted[(adaptor.name, os.path.abspath(fastq))].append((sample, adaptor))
 
     paf_stats = {}
-    sample_stats = []
     out_fastqs = []
-    all_samples = []
 
     for key, sample in adaptors_sorted.items():
 
@@ -95,9 +93,7 @@ def run_demux(args):
                 matches = rc_matches
                 flipped = True
 
-        aligned_samples = []
         for k, v in groupby(sorted(matches,key=lambda x: x[3]), key=lambda y: y[3]):
-            aligned_samples.append(k)
             fq_name = os.path.join(args.out_fastq, k+".fastq.gz")
             out_fastqs.append(fq_name)
             sample_dict = {i[0]: [i] for i in v}
@@ -115,11 +111,11 @@ def run_demux(args):
             if not args.skip_demux:
                 write_demuxedfastq(sample_dict, fastq_path, fq_name)
 
-        all_samples.extend(aligned_samples)
-        # Check if there were samples in the samplesheet without adaptor alignments
-        for ss_sample, ss_adaptor, ss_path in ss:
-            if ss_adaptor.name == adaptor and ss_sample not in aligned_samples:
-                sample_stats.append("{}\t0".format(ss_sample))
+        # Check if there were samples in the samplesheet without adaptor alignments and add them to report
+        for ss_sample, _, _ in ss:
+            if ss_sample not in [s.sample_name for s in [stat for stat in report.sample_stats]]:
+                sample_stat = SampleStat(ss_sample, 0, 0, 0, False)
+                report.add_sample_stat(sample_stat)
 
         # Top unmatched indexes
         nomatch_count = Counter([x[3] for x in no_matches])
@@ -130,7 +126,6 @@ def run_demux(args):
 
     if args.skip_fastqc:
         log.warning(" As of version 0.4.1, built in support for FastQC + MultiQC is removed. The '-f' flag is redundant.")
-
 
 def anglerfish():
     parser = argparse.ArgumentParser(description='Tools to demux I7 and I5 barcodes when sequenced by single-molecules')
