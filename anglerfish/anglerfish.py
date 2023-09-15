@@ -3,7 +3,6 @@ import argparse
 import logging
 import glob
 import os
-import json
 import pkg_resources
 import numpy as np
 import uuid
@@ -51,15 +50,11 @@ def run_demux(args):
     for sample, adaptor, fastq in ss:
         adaptors_sorted[(adaptor.name, os.path.abspath(fastq))].append((sample, adaptor))
 
-    paf_stats = {}
     out_fastqs = []
-
     for key, sample in adaptors_sorted.items():
 
         adaptor_name, fastq_path = key
         fastq_files = glob.glob(fastq_path)
-
-        assert adaptor_name not in paf_stats, f"Duplicate adaptor name {adaptor_name} in samplesheet"
 
         aln_path = os.path.join(args.out_fastq, f"{adaptor_name}.paf")
         adaptor_path = os.path.join(args.out_fastq,f"{adaptor_name}.fasta")

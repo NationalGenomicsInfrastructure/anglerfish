@@ -1,6 +1,3 @@
-import argparse
-import logging
-import glob
 import os
 import json
 from dataclasses import dataclass
@@ -86,6 +83,7 @@ class SampleStat:
     mean_read_len: float
     std_read_len: float
     i5_reversed: bool
+    ont_barcode: str = None
     header: ClassVar[list] = ["sample_name",
                               "#reads",
                               "mean_read_len",

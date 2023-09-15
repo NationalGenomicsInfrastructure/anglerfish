@@ -161,13 +161,14 @@ def cluster_matches(sample_adaptor, matches, max_distance, i5_reversed=False):
             log.debug(" Erroneous / overlapping adaptor matches")
             continue
         if dists[index_min] > max_distance:
-            log.debug(" No match")
+            log.debug(f" No match {fi7}-{fi5}")
             # Find only full length i7(+i5) adaptor combos. Basically a list of "known unknowns"
             if len(fi7) + len(fi5) == len(adaptor.i7_index or "") + len(adaptor.i5_index or ""):
                 fi75 = "+".join([i for i in [fi7, fi5] if not i == ""])
                 unmatched_bed.append([read, start_insert, end_insert, fi75, "999", "."])
             continue
         matched[read] = alignments
+        log.debug(f" Matched {read} to {adaptor.i7_index}-{adaptor.i5_index}")
         matched_bed.append([read, start_insert, end_insert, sample_adaptor[index_min][0], "999", "."])
     return unmatched_bed, matched_bed
 
