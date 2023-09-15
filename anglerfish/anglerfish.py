@@ -12,6 +12,7 @@ from itertools import groupby
 from collections import Counter
 from .demux.demux import run_minimap2, parse_paf_lines, layout_matches, cluster_matches, write_demuxedfastq
 from .demux.samplesheet import SampleSheet
+from .demux.report import Report, SampleStat, AlignmentStat
 import gzip
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger('anglerfish')
@@ -23,6 +24,8 @@ def run_demux(args):
     os.mkdir(args.out_fastq)
     ss = SampleSheet(args.samplesheet)
     version = pkg_resources.get_distribution("bio-anglerfish").version
+    report = Report(args.run_name, run_uuid, version)
+
     log.info(f" version {version}")
     log.info(f" arguments {vars(args)}")
     log.info(f" run uuid {run_uuid}")
@@ -50,11 +53,9 @@ def run_demux(args):
 
     paf_stats = {}
     sample_stats = []
-    unmatched_stats = []
     out_fastqs = []
     all_samples = []
 
-    # TODO: Refactor giant for loop
     for key, sample in adaptors_sorted.items():
 
         adaptor_name, fastq_path = key
@@ -69,26 +70,21 @@ def run_demux(args):
         for fq in fastq_files:
             retcode = run_minimap2(fq, adaptor_path, aln_path, args.threads)
 
-        # Easy line count in input fastqfiles
-        fq_entries = 0
+        # Easy line count in input fastq files
+        num_fq = 0
         for fq in fastq_files:
             with gzip.open(fq, 'rb') as f:
                 for i in f:
-                    fq_entries += 1
-        fq_entries = int(fq_entries / 4)
+                    num_fq  += 1
+        num_fq  = int(num_fq  / 4)
         paf_entries = parse_paf_lines(aln_path)
 
         # Make stats
         fragments, singletons, concats, unknowns = layout_matches(adaptor_name+"_i5",adaptor_name+"_i7",paf_entries)
-        total = len(fragments)+len(singletons)+len(concats)+len(unknowns)
+        stats = AlignmentStat(adaptor_name)
+        stats.compute_pafstats(num_fq, fragments, singletons, concats, unknowns)
+        report.add_alignment_stat(stats)
 
-        paf_stats[adaptor_name] = {}
-        paf_stats[adaptor_name]["input_reads"] = [fq_entries, 1.0]
-        paf_stats[adaptor_name]["reads aligning to adaptor sequences"] = [total, total/float(fq_entries)]
-        paf_stats[adaptor_name]["aligned reads matching both I7 and I5 adaptor"] = [len(fragments), len(fragments)/float(total)]
-        paf_stats[adaptor_name]["aligned reads matching only I7 or I5 adaptor"] = [len(singletons), len(singletons)/float(total)]
-        paf_stats[adaptor_name]["aligned reads matching multiple I7/I5 adaptor pairs"] = [len(concats), len(concats)/float(total)]
-        paf_stats[adaptor_name]["aligned reads with uncategorized alignments"] = [len(unknowns), len(unknowns)/float(total)]
         no_matches, matches = cluster_matches(adaptors_sorted[key], fragments, args.max_distance)
         flipped = False
         if args.lenient:
@@ -114,7 +110,8 @@ def run_demux(args):
             rmean = np.round(np.mean(rlens),2)
             rstd = np.round(np.std(rlens),2)
 
-            sample_stats.append("{}\t{}\t{}\t{}\t{}".format(k, len(sample_dict.keys()), rmean, rstd, flipped))
+            sample_stat = SampleStat(k, len(sample_dict.keys()), rmean, rstd, flipped)
+            report.add_sample_stat(sample_stat)
             if not args.skip_demux:
                 write_demuxedfastq(sample_dict, fastq_path, fq_name)
 
@@ -126,37 +123,11 @@ def run_demux(args):
 
         # Top unmatched indexes
         nomatch_count = Counter([x[3] for x in no_matches])
-        unmatched_stats.append(nomatch_count.most_common(args.max_unknowns))
+        report.add_unmatched_stat(nomatch_count.most_common(args.max_unknowns))
 
-    header1 = ["sample_name","#reads","mean_read_len","std_read_len","i5_reversed"]
-    header2 = ["undetermined_index","count"]
-    json_out = {
-        "anglerfish_version":version,
-        "run_name": args.run_name,
-        "run_uuid": run_uuid,
-        "paf_stats": [],
-        "sample_stats": [],
-        "undetermined": []
-    }
-    with open(os.path.join(args.out_fastq,"anglerfish_stats.txt"), "w") as f:
-        f.write(f"Anglerfish v. {version} (run: {args.run_name}, {run_uuid})\n===================\n")
-        for key, line in paf_stats.items():
-            f.write(f"{key}:\n")
-            for i,j in line.items():
-                f.write(f"{j[0]}\t{i} ({j[1]*100:.2f}%)\n")
-            json_out["paf_stats"].append(line)
-        f.write("\n{}\n".format("\t".join(header1)))
-        for sample in sample_stats:
-            f.write(sample+"\n")
-            json_out["sample_stats"].append(dict(zip(header1,sample.split("\t"))))
-        f.write("\n{}\n".format("\t".join(header2)))
-        for unmatch in unmatched_stats:
-            for idx, mnum in unmatch:
-                f.write("{}\t{}\n".format(idx, mnum))
-                json_out["undetermined"].append(dict(zip(header2,[idx, mnum])))
+    report.write_report(args.out_fastq)
+    report.write_json(args.out_fastq)
 
-    with open(os.path.join(args.out_fastq,"anglerfish_stats.json"), "w") as f:
-        f.write(json.dumps(json_out,indent=2, sort_keys=True))
     if args.skip_fastqc:
         log.warning(" As of version 0.4.1, built in support for FastQC + MultiQC is removed. The '-f' flag is redundant.")
 
