@@ -35,7 +35,8 @@ class Report(object):
             f.write("\n{}\n".format("\t".join(getattr(SampleStat, "header"))))
             for sample in self.sample_stats:
                 f.write(f"{sample.sample_name}\t{sample.num_reads}\t{sample.mean_read_len}\t{sample.std_read_len}\t{sample.i5_reversed}\n")
-            f.write(f"\n{getattr(Report, 'unmatch_header')}\n")
+            uhead = getattr(Report, 'unmatch_header')
+            f.write(f"\n{chr(9).join(uhead)}\n") # chr(9) = tab
             for unmatch in self.unmatched_stats:
                 for idx, mnum in unmatch:
                     f.write("{}\t{}\n".format(idx, mnum))
