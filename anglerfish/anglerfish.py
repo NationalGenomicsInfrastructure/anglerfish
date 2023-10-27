@@ -21,7 +21,7 @@ def run_demux(args):
 
     run_uuid = str(uuid.uuid4())
     os.mkdir(args.out_fastq)
-    ss = SampleSheet(args.samplesheet)
+    ss = SampleSheet(args.samplesheet, args.ont_barcodes)
     version = pkg_resources.get_distribution("bio-anglerfish").version
     report = Report(args.run_name, run_uuid, version)
 
@@ -29,9 +29,6 @@ def run_demux(args):
     log.info(f" arguments {vars(args)}")
     log.info(f" run uuid {run_uuid}")
     bc_dist = ss.minimum_bc_distance()
-    if bc_dist == 0:
-        log.error("There is one or more identical barcodes in the input samplesheet. Aborting!")
-        exit()
     if args.max_distance == None:
         if bc_dist > 1:
             args.max_distance = 2
@@ -44,11 +41,11 @@ def run_demux(args):
     log.debug(f"Samplesheet bc_dist == {bc_dist}")
 
     # Sort the adaptors by type and size
-    adaptors_t = [(adaptor.name, os.path.abspath(fastq)) for _, adaptor, fastq in ss]
+    adaptors_t = [(entry.adaptor.name, os.path.abspath(entry.fastq)) for entry in ss]
     adaptor_set = set(adaptors_t)
     adaptors_sorted = dict([(i, []) for i in adaptor_set])
-    for sample, adaptor, fastq in ss:
-        adaptors_sorted[(adaptor.name, os.path.abspath(fastq))].append((sample, adaptor))
+    for entry in ss:
+        adaptors_sorted[(entry.adaptor.name, os.path.abspath(entry.fastq))].append((entry.sample_name, entry.adaptor))
 
     out_fastqs = []
     for key, sample in adaptors_sorted.items():
@@ -107,9 +104,9 @@ def run_demux(args):
                 write_demuxedfastq(sample_dict, fastq_path, fq_name)
 
         # Check if there were samples in the samplesheet without adaptor alignments and add them to report
-        for ss_sample, _, _ in ss:
-            if ss_sample not in [s.sample_name for s in [stat for stat in report.sample_stats]]:
-                sample_stat = SampleStat(ss_sample, 0, 0, 0, False)
+        for entry in ss:
+            if entry.sample_name not in [s.sample_name for s in [stat for stat in report.sample_stats]]:
+                sample_stat = SampleStat(entry.sample_name, 0, 0, 0, False)
                 report.add_sample_stat(sample_stat)
 
         # Top unmatched indexes
@@ -133,6 +130,7 @@ def anglerfish():
     parser.add_argument('--max-unknowns', '-u', type=int, default=10, help='Maximum number of unknown indices to show in the output (default: 10)')
     parser.add_argument('--run_name', '-r', default='anglerfish', help='Name of the run (default: anglerfish)')
     parser.add_argument('--lenient', '-l', action='store_true', help='Will try reverse complementing the I5 index and choose the best match. USE WITH EXTREME CAUTION!')
+    parser.add_argument('--ont_barcodes', '-n', action='store_true', help='Will assume the samplesheet refers to a single ONT run prepped with a barcoding kit. And will treat each barcode separately')
     parser.add_argument('--debug', '-d', action='store_true', help='Extra commandline output')
     parser.add_argument('--version', '-v', action='version', help='Print version and quit', version=f'anglerfish {pkg_resources.get_distribution("bio-anglerfish").version}')
     args = parser.parse_args()

@@ -1,6 +1,8 @@
 import csv
 import Levenshtein as lev
 import glob
+import re
+from dataclasses import dataclass
 from itertools import combinations
 import yaml
 import importlib.resources
@@ -10,6 +12,14 @@ p = importlib.resources.files("anglerfish.config").joinpath("adaptors.yaml")
 with open(p, "r") as stream:
     adaptors = yaml.safe_load(stream)
 delim = "-NNN-"
+
+@dataclass
+class SampleSheetEntry:
+
+    sample_name: str
+    adaptor: object
+    fastq: str
+    ont_barcode: str
 
 
 class Adaptor(object):
@@ -42,10 +52,11 @@ class Adaptor(object):
 
 class SampleSheet(object):
 
-    def __init__(self, input_csv):
+    def __init__(self, input_csv, ont_bc):
 
         # Read samplesheet in format:
         # sample_name, adaptors, i7_index(-i5_index), fastq_path
+        # If we are demuxing a run with ONT barcodes, we will have to assume fastq files are located in "barcode##" folders
 
         self.samplesheet = []
         try:
@@ -66,15 +77,26 @@ class SampleSheet(object):
                     i5 = i7i5[1]
 
                 sample_name = row['sample_name']
-                if row['sample_name'] in [sn[0] for sn in self.samplesheet]:
+                if row['sample_name'] in [sn.sample_name for sn in self.samplesheet]:
                     sample_name = sample_name+"_row"+str(rn)
                 assert len(glob.glob(row['fastq_path'])) > 0
                 test_globs[row['fastq_path']] = glob.glob(row['fastq_path'])
-                self.samplesheet.append((sample_name, Adaptor(row['adaptors'], i7, i5),row['fastq_path']))
+
+                bc_re = re.compile("\/(barcode\d\d)\/")
+                ont_barcode = None
+                if ont_bc:
+                    ob = re.findall(bc_re, row['fastq_path'])
+                    assert len(ob) > 0 and len(ob[0][-1]) > 0, "ONT barcode not found in fastq path. In ONT barcode mode (-n), fastq files must be located in barcode## folders"
+                    ont_barcode = ob[0]
+
+                ss_entry = SampleSheetEntry(sample_name, Adaptor(row['adaptors'], i7, i5),row['fastq_path'], ont_barcode)
+                self.samplesheet.append(ss_entry)
                 rn += 1
 
-            # Explaination: Don't mess around with the globs too much.
+            # Explanation: Don't mess around with the globs too much. Don't refer to the same file twice but using globs,
+            # e.g, ./input.fastq and ./[i]nput.fastq
             for a,b in combinations(test_globs.values(), 2):
+                print(set(a), set(b), set(a) & set(b))
                 if len(set(a) & set(b)) > 0:
                     raise UserWarning(f"Fastq paths are inconsistent. Please check samplesheet")
         except:
@@ -82,42 +104,47 @@ class SampleSheet(object):
         finally:
             csvfile.close()
 
+
     def minimum_bc_distance(self):
+        """ Compute the minimum edit distance between all barcodes in samplesheet, or within each ONT barcode group """
 
-        ss_by_fastq = {}
+        ss_by_bc = {}
         testset = {}
-        for _, adaptor, fastq in self.samplesheet:
-            if fastq in ss_by_fastq:
-                ss_by_fastq[fastq].append(adaptor)
+        for entry in self.samplesheet:
+            if entry.ont_barcode in ss_by_bc:
+                ss_by_bc[entry.ont_barcode].append(entry.adaptor)
             else:
-                ss_by_fastq[fastq] = [adaptor]
+                ss_by_bc[entry.ont_barcode] = [entry.adaptor]
 
-        for fastq, adaptors in ss_by_fastq.items():
-            testset[fastq] = []
+        for ont_barcode, adaptors in ss_by_bc.items():
+            testset[ont_barcode] = []
             for adaptor in adaptors:
                 if adaptor.i5_index is not None:
-                    testset[fastq].append(adaptor.i5_index+adaptor.i7_index)
+                    testset[ont_barcode].append(adaptor.i5_index+adaptor.i7_index)
                 else:
-                    testset[fastq].append(adaptor.i7_index)
+                    testset[ont_barcode].append(adaptor.i7_index)
 
         fq_distances=[]
-        for fastq, adaptors in testset.items():
+        for ont_barcode, adaptors in testset.items():
             distances = []
             if len(adaptors) == 1:
                 distances = [len(adaptors[0])]
             else:
                 for a, b in [i for i in combinations(adaptors, 2)]:
-                    distances.append(lev.distance(a,b))
+                    dist = lev.distance(a,b)
+                    assert dist > 0, f"""There is one or more identical barcodes in the input samplesheet.
+                        First one found: {a}. If these exist in different ONT barcodes, please specify the --ont_barcodes flag."""
+                    distances.append(dist)
             fq_distances.append(min(distances))
         return min(fq_distances)
 
     def get_fastastring(self, adaptor_name=None):
 
         fastas = {}
-        for sample, adaptor, fastq in self.samplesheet:
-            if adaptor.name == adaptor_name or adaptor_name is None:
-                fastas[adaptor.name+"_i7"] = adaptor.get_i7_mask()
-                fastas[adaptor.name+"_i5"] = adaptor.get_i5_mask()
+        for entry in self.samplesheet:
+            if entry.adaptor.name == adaptor_name or adaptor_name is None:
+                fastas[entry.adaptor.name+"_i7"] = entry.adaptor.get_i7_mask()
+                fastas[entry.adaptor.name+"_i5"] = entry.adaptor.get_i5_mask()
 
         assert len(fastas) > 0
 
