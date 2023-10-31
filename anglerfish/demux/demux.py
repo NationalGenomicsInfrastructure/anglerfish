@@ -139,7 +139,7 @@ def cluster_matches(sample_adaptor, matches, max_distance, i5_reversed=False):
 
         dists = []
         fi5 = ""; fi7 = ""
-        for _, adaptor in sample_adaptor:
+        for _, adaptor, _ in sample_adaptor:
             try:
                 i5_seq = adaptor.i5_index
                 if i5_reversed:

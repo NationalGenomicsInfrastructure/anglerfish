@@ -77,12 +77,9 @@ class SampleSheet(object):
                     i5 = i7i5[1]
 
                 sample_name = row['sample_name']
-                if row['sample_name'] in [sn.sample_name for sn in self.samplesheet]:
-                    sample_name = sample_name+"_row"+str(rn)
-                assert len(glob.glob(row['fastq_path'])) > 0
                 test_globs[row['fastq_path']] = glob.glob(row['fastq_path'])
 
-                bc_re = re.compile("\/(barcode\d\d)\/")
+                bc_re = re.compile("\/(barcode\d\d|unclassified)\/")
                 ont_barcode = None
                 if ont_bc:
                     ob = re.findall(bc_re, row['fastq_path'])
@@ -96,9 +93,14 @@ class SampleSheet(object):
             # Explanation: Don't mess around with the globs too much. Don't refer to the same file twice but using globs,
             # e.g, ./input.fastq and ./[i]nput.fastq
             for a,b in combinations(test_globs.values(), 2):
-                print(set(a), set(b), set(a) & set(b))
                 if len(set(a) & set(b)) > 0:
                     raise UserWarning(f"Fastq paths are inconsistent. Please check samplesheet")
+
+            if not ont_bc and len(set([v[0] for v in test_globs.values()])) > 1:
+                raise UserWarning("""Found several different fastq files in samplesheet. Please carefully check any glob patterns. 
+                                  If you are using ONT barcodes, please specify the --ont_barcodes flag. Or if you are trying to input several 
+                                  sets of fastqs into anglerfish, please run anglerfish separately for each set.""")
+
         except:
             raise
         finally:

@@ -41,19 +41,24 @@ def run_demux(args):
     log.debug(f"Samplesheet bc_dist == {bc_dist}")
 
     # Sort the adaptors by type and size
-    adaptors_t = [(entry.adaptor.name, os.path.abspath(entry.fastq)) for entry in ss]
+    adaptors_t = [(entry.adaptor.name, entry.ont_barcode) for entry in ss]
     adaptor_set = set(adaptors_t)
     adaptors_sorted = dict([(i, []) for i in adaptor_set])
     for entry in ss:
-        adaptors_sorted[(entry.adaptor.name, os.path.abspath(entry.fastq))].append((entry.sample_name, entry.adaptor))
+        adaptors_sorted[(entry.adaptor.name, entry.ont_barcode)].append((entry.sample_name, entry.adaptor, os.path.abspath(entry.fastq)))
 
     out_fastqs = []
     for key, sample in adaptors_sorted.items():
 
-        adaptor_name, fastq_path = key
+        adaptor_name, ont_barcode = key
+        fastq_path = sample[0][2]
+
+        adaptor_bc_name = adaptor_name
+        if ont_barcode:
+            adaptor_bc_name = adaptor_name+"_"+ont_barcode
         fastq_files = glob.glob(fastq_path)
 
-        aln_path = os.path.join(args.out_fastq, f"{adaptor_name}.paf")
+        aln_path = os.path.join(args.out_fastq, f"{adaptor_bc_name}.paf")
         adaptor_path = os.path.join(args.out_fastq,f"{adaptor_name}.fasta")
         with open(adaptor_path, "w") as f:
             f.write(ss.get_fastastring(adaptor_name))
@@ -71,7 +76,7 @@ def run_demux(args):
 
         # Make stats
         fragments, singletons, concats, unknowns = layout_matches(adaptor_name+"_i5",adaptor_name+"_i7",paf_entries)
-        stats = AlignmentStat(adaptor_name)
+        stats = AlignmentStat(adaptor_bc_name)
         stats.compute_pafstats(num_fq, fragments, singletons, concats, unknowns)
         report.add_alignment_stat(stats)
 
@@ -103,15 +108,15 @@ def run_demux(args):
             if not args.skip_demux:
                 write_demuxedfastq(sample_dict, fastq_path, fq_name)
 
-        # Check if there were samples in the samplesheet without adaptor alignments and add them to report
-        for entry in ss:
-            if entry.sample_name not in [s.sample_name for s in [stat for stat in report.sample_stats]]:
-                sample_stat = SampleStat(entry.sample_name, 0, 0, 0, False)
-                report.add_sample_stat(sample_stat)
-
         # Top unmatched indexes
         nomatch_count = Counter([x[3] for x in no_matches])
         report.add_unmatched_stat(nomatch_count.most_common(args.max_unknowns))
+
+    # Check if there were samples in the samplesheet without adaptor alignments and add them to report
+    for entry in ss:
+        if entry.sample_name not in [s.sample_name for s in [stat for stat in report.sample_stats]]:
+            sample_stat = SampleStat(entry.sample_name, 0, 0, 0, False)
+            report.add_sample_stat(sample_stat)
 
     report.write_report(args.out_fastq)
     report.write_json(args.out_fastq)
