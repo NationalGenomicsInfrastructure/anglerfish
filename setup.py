@@ -16,7 +16,7 @@ from pathlib import Path
 this_directory = Path(__file__).parent
 long_description = (this_directory / "README.md").read_text()
 
-version='0.5.0'
+version='0.6.0'
 
 setup(
     name='bio-anglerfish',
