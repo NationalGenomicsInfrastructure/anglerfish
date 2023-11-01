@@ -52,12 +52,13 @@ def run_demux(args):
 
         adaptor_name, ont_barcode = key
         fastq_path = sample[0][2]
-
+        # If there are multiple ONT barcodes, we need to add the ONT barcode to the adaptor name
         adaptor_bc_name = adaptor_name
         if ont_barcode:
             adaptor_bc_name = adaptor_name+"_"+ont_barcode
         fastq_files = glob.glob(fastq_path)
 
+        # Align
         aln_path = os.path.join(args.out_fastq, f"{adaptor_bc_name}.paf")
         adaptor_path = os.path.join(args.out_fastq,f"{adaptor_name}.fasta")
         with open(adaptor_path, "w") as f:
@@ -80,9 +81,10 @@ def run_demux(args):
         stats.compute_pafstats(num_fq, fragments, singletons, concats, unknowns)
         report.add_alignment_stat(stats)
 
+        # Demux
         no_matches, matches = cluster_matches(adaptors_sorted[key], fragments, args.max_distance)
         flipped = False
-        if args.lenient:
+        if args.lenient: # Try reverse complementing the I5 index and choose the best match
             rc_no_matches, rc_matches = cluster_matches(adaptors_sorted[key], fragments, args.max_distance, i5_reversed=True)
             if len(rc_matches) * 0.2 > len(matches):
                 log.info(f"Reversing I5 index for adaptor {adaptor_name} found at least 80% more matches")
@@ -91,7 +93,12 @@ def run_demux(args):
                 flipped = True
 
         for k, v in groupby(sorted(matches,key=lambda x: x[3]), key=lambda y: y[3]):
-            fq_name = os.path.join(args.out_fastq, k+".fastq.gz")
+
+            ## To avoid collisions in fastq filenames, we add the ONT barcode to the sample name
+            fq_prefix = k
+            if ont_barcode:
+                fq_prefix = ont_barcode+"-"+fq_prefix
+            fq_name = os.path.join(args.out_fastq, fq_prefix+".fastq.gz")
             out_fastqs.append(fq_name)
             sample_dict = {i[0]: [i] for i in v}
 
