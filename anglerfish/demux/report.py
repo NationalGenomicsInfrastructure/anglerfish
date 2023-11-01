@@ -5,7 +5,7 @@ from typing import ClassVar
 
 class Report(object):
 
-    unmatch_header = ["index", "num_reads"]
+    unmatch_header = ["index", "num_reads", "ont_barcode"]
 
     def __init__(self, run_name, uuid, version):
         self.run_name = run_name
@@ -13,14 +13,14 @@ class Report(object):
         self.version = version
         self.aln_stats = []
         self.sample_stats = []
-        self.unmatched_stats = []
+        self.unmatched_stats = {}
 
     def add_alignment_stat(self, aln_stat):
         self.aln_stats.append(aln_stat)
     def add_sample_stat(self, sample_stat):
         self.sample_stats.append(sample_stat)
-    def add_unmatched_stat(self, unmatched_stat):
-        self.unmatched_stats.append(unmatched_stat)
+    def add_unmatched_stat(self, unmatched_stat, ont_barcode, adaptor_name):
+        self.unmatched_stats[(ont_barcode, adaptor_name)] = unmatched_stat
 
     def write_report(self, outdir):
         with open(os.path.join(outdir,"anglerfish_stats.txt"), "w") as f:
@@ -31,12 +31,12 @@ class Report(object):
                     f.write(f"{j[0]}\t{i} ({j[1]*100:.2f}%)\n")
             f.write("\n{}\n".format("\t".join(getattr(SampleStat, "header"))))
             for sample in self.sample_stats:
-                f.write(f"{sample.sample_name}\t{sample.num_reads}\t{sample.mean_read_len}\t{sample.std_read_len}\t{sample.i5_reversed}\n")
+                f.write(f"{sample.sample_name}\t{sample.num_reads}\t{sample.mean_read_len}\t{sample.std_read_len}\t{sample.i5_reversed}\t{sample.ont_barcode}\n")
             uhead = getattr(Report, 'unmatch_header')
             f.write(f"\n{chr(9).join(uhead)}\n") # chr(9) = tab
-            for unmatch in self.unmatched_stats:
+            for key, unmatch in self.unmatched_stats.items():
                 for idx, mnum in unmatch:
-                    f.write("{}\t{}\n".format(idx, mnum))
+                    f.write("{}\t{}\t{}\n".format(idx, mnum, key[0]))
     
     def write_json(self, outdir):
         json_out = {
@@ -50,11 +50,11 @@ class Report(object):
         for astat in self.aln_stats:
             json_out["paf_stats"].append(astat.paf_stats)
         for sample in self.sample_stats:
-            slist = [sample.sample_name, sample.num_reads, sample.mean_read_len, sample.std_read_len, sample.i5_reversed]
+            slist = [sample.sample_name, sample.num_reads, sample.mean_read_len, sample.std_read_len, sample.i5_reversed, sample.ont_barcode]
             json_out["sample_stats"].append(dict(zip(getattr(SampleStat, "header"),slist)))
-        for unmatch in self.unmatched_stats:
+        for key, unmatch in self.unmatched_stats.items():
             for idx, mnum in unmatch:
-                json_out["undetermined"].append(dict(zip(getattr(Report, "unmatch_header"),[idx, mnum])))
+                json_out["undetermined"].append(dict(zip(getattr(Report, "unmatch_header"),[idx, mnum, key[0]])))
         with open(os.path.join(outdir,"anglerfish_stats.json"), "w") as f:
             f.write(json.dumps(json_out,indent=2, sort_keys=True))
 
@@ -88,7 +88,8 @@ class SampleStat:
                               "#reads",
                               "mean_read_len",
                               "std_read_len",
-                              "i5_reversed"]
+                              "i5_reversed",
+                              "ont_barcode"]
 
 
 

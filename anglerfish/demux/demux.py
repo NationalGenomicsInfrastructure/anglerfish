@@ -142,7 +142,7 @@ def cluster_matches(sample_adaptor, matches, max_distance, i5_reversed=False):
         for _, adaptor, _ in sample_adaptor:
             try:
                 i5_seq = adaptor.i5_index
-                if i5_reversed:
+                if i5_reversed and i5_seq is not None:
                     i5_seq = str(Seq(i5_seq).reverse_complement())
                 fi5, d1 = parse_cs(i5['cs'], i5_seq, max_distance)
             except AttributeError:
@@ -175,9 +175,11 @@ def cluster_matches(sample_adaptor, matches, max_distance, i5_reversed=False):
 
 
 def write_demuxedfastq(beds, fastq_in, fastq_out):
-    # Take a set of coordinates in bed format [[seq1, start, end, ..][seq2, ..]]
-    # from over a set of fastq entries in the input files and do extraction.
-    # TODO: Can be optimized using pigz or rewritten using python threading
+    """
+     Take a set of coordinates in bed format [[seq1, start, end, ..][seq2, ..]]
+     from over a set of fastq entries in the input files and do extraction.
+     TODO: Can be optimized using pigz or rewritten using python threading
+    """
     gz_buf = 131072
     fq_files = glob.glob(fastq_in)
     for fq in fq_files:

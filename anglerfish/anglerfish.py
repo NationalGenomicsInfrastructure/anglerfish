@@ -110,19 +110,19 @@ def run_demux(args):
             rmean = np.round(np.mean(rlens),2)
             rstd = np.round(np.std(rlens),2)
 
-            sample_stat = SampleStat(k, len(sample_dict.keys()), rmean, rstd, flipped)
+            sample_stat = SampleStat(k, len(sample_dict.keys()), rmean, rstd, flipped, ont_barcode)
             report.add_sample_stat(sample_stat)
             if not args.skip_demux:
                 write_demuxedfastq(sample_dict, fastq_path, fq_name)
 
         # Top unmatched indexes
         nomatch_count = Counter([x[3] for x in no_matches])
-        report.add_unmatched_stat(nomatch_count.most_common(args.max_unknowns))
+        report.add_unmatched_stat(nomatch_count.most_common(args.max_unknowns), ont_barcode, adaptor_name)
 
     # Check if there were samples in the samplesheet without adaptor alignments and add them to report
     for entry in ss:
         if entry.sample_name not in [s.sample_name for s in [stat for stat in report.sample_stats]]:
-            sample_stat = SampleStat(entry.sample_name, 0, 0, 0, False)
+            sample_stat = SampleStat(entry.sample_name, 0, 0, 0, False, ont_barcode)
             report.add_sample_stat(sample_stat)
 
     report.write_report(args.out_fastq)
