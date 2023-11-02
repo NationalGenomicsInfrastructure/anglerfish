@@ -4,7 +4,7 @@ channels:
   - bioconda
 dependencies:
   - conda-forge::biopython=1.79
-  - conda-forge::python-levenshtein=0.12.1
+  - conda-forge::python-levenshtein=0.23.0
   - conda-forge::numpy=1.22.0
   - bioconda::minimap2=2.20
   - conda-forge::pyyaml=6.0
