@@ -1,15 +1,16 @@
-FROM frolvlad/alpine-miniconda3
+FROM mambaorg/micromamba
 
 LABEL author="Remi-Andre Olsen" \
       description="Anglerfish" \
       maintainer="remi-andre.olsen@scilifelab.se"
 
-COPY environment.yml /
-RUN conda env create -f /environment.yml && conda clean -a
+USER root
+COPY --chown=$MAMBA_USER:$MAMBA_USER environment.yml /
+RUN micromamba env create -n anglerfish && micromamba install -y -n anglerfish -f /environment.yml && micromamba clean --all --yes 
 ENV PATH /opt/conda/envs/anglerfish/bin:$PATH
 
 # Add source files to the container
 ADD . /usr/src/anglerfish
 WORKDIR /usr/src/anglerfish
-
-RUN python -m pip install .
+RUN eval "$(micromamba shell hook --shell bash)" && micromamba activate anglerfish && python -m pip install .
+USER $MAMBA_USER
