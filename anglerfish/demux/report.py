@@ -1,6 +1,6 @@
 import os
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from typing import ClassVar
 
 class Report(object):
@@ -58,6 +58,39 @@ class Report(object):
         with open(os.path.join(outdir,"anglerfish_stats.json"), "w") as f:
             f.write(json.dumps(json_out,indent=2, sort_keys=True))
 
+    def write_dataframe(self,outdir,samplesheet):
+        """Write a dataframe of the stats to a csv file.
+            TODO: This needs be cleaned up and made more robust. Especially lock in / decouple from upstream the header names and order:
+            sample_name, num_reads, mean_read_len, std_read_len, i5_reversed, ont_barcode, adaptor_name, i7_index, i5_index 
+        """
+        out_list = []
+        for sample in self.sample_stats:
+            s_dict = asdict(sample)
+            for sentry in samplesheet:
+                sen_dict = asdict(sentry)
+                if sen_dict["sample_name"] == s_dict["sample_name"]:
+                    s_dict["adaptor_name"] = sen_dict["adaptor"].name
+                    s_dict["i7_index"] = sen_dict["adaptor"].i7_index
+                    s_dict["i5_index"] = sen_dict["adaptor"].i5_index
+            out_list.append(s_dict)
+        for key, unmatch in self.unmatched_stats.items():
+            un = {i: None for i in out_list[-1].keys()}
+            i7i5 = [i.upper() for i in unmatch[0][0].split("+")]
+            if len(i7i5) == 1:
+                i7i5.append(None)
+            un["adaptor_name"] = key[1]
+            un["num_reads"] = unmatch[0][1]
+            un["ont_barcode"] = key[0]
+            un["i7_index"] = i7i5[0]
+            un["i5_index"] = i7i5[1]
+            out_list.append(un)
+        with open(os.path.join(outdir,"anglerfish_dataframe.csv"), "w") as f:
+            out_header = out_list[0].keys()
+            f.write(",".join(out_header))
+            f.write("\n")
+            for out in out_list:
+                f.write(",".join([str(out[i]) for i in out_header]))
+                f.write("\n")
 
 class AlignmentStat(object):
 
@@ -85,7 +118,7 @@ class SampleStat:
     i5_reversed: bool
     ont_barcode: str = None
     header: ClassVar[list] = ["sample_name",
-                              "#reads",
+                              "#reads", # We specify this for historical reasons
                               "mean_read_len",
                               "std_read_len",
                               "i5_reversed",

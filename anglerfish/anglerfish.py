@@ -127,6 +127,7 @@ def run_demux(args):
 
     report.write_report(args.out_fastq)
     report.write_json(args.out_fastq)
+    report.write_dataframe(args.out_fastq, ss)
 
     if args.skip_fastqc:
         log.warning(" As of version 0.4.1, built in support for FastQC + MultiQC is removed. The '-f' flag is redundant.")
