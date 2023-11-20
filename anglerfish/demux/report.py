@@ -74,16 +74,17 @@ class Report(object):
                     s_dict["i5_index"] = sen_dict["adaptor"].i5_index
             out_list.append(s_dict)
         for key, unmatch in self.unmatched_stats.items():
-            un = {i: None for i in out_list[-1].keys()}
-            i7i5 = [i.upper() for i in unmatch[0][0].split("+")]
-            if len(i7i5) == 1:
-                i7i5.append(None)
-            un["adaptor_name"] = key[1]
-            un["num_reads"] = unmatch[0][1]
-            un["ont_barcode"] = key[0]
-            un["i7_index"] = i7i5[0]
-            un["i5_index"] = i7i5[1]
-            out_list.append(un)
+            for unmatch_sample in unmatch:
+                un = {i: None for i in out_list[-1].keys()}
+                i7i5 = [i.upper() for i in unmatch_sample[0].split("+")]
+                if len(i7i5) == 1:
+                    i7i5.append(None)
+                un["adaptor_name"] = key[1]
+                un["num_reads"] = unmatch_sample[1]
+                un["ont_barcode"] = key[0]
+                un["i7_index"] = i7i5[0]
+                un["i5_index"] = i7i5[1]
+                out_list.append(un)
         with open(os.path.join(outdir,"anglerfish_dataframe.csv"), "w") as f:
             out_header = out_list[0].keys()
             f.write(",".join(out_header))
