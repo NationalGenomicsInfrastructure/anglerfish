@@ -94,7 +94,6 @@ def layout_matches(i5_name, i7_name, paf_entries):
         - unknowns. Any other reads
     """
 
-    log.info(" Searching for adaptor hits")
     fragments = {}; singletons = {}; concats = {}; unknowns = {}
     for read, entry_list in paf_entries.items():
         sorted_entries = []
@@ -119,7 +118,7 @@ def layout_matches(i5_name, i7_name, paf_entries):
     return (fragments, singletons, concats, unknowns)
 
 
-def cluster_matches(sample_adaptor, matches, max_distance, i5_reversed=False):
+def cluster_matches(sample_adaptor, matches, max_distance, i7_reversed=False, i5_reversed=False):
 
     # Only illumina fragments
     matched = {}; matched_bed = []; unmatched_bed = []
@@ -146,8 +145,12 @@ def cluster_matches(sample_adaptor, matches, max_distance, i5_reversed=False):
                     i5_seq = str(Seq(i5_seq).reverse_complement())
                 fi5, d1 = parse_cs(i5['cs'], i5_seq, max_distance)
             except AttributeError:
-                d1 = 0 # presumably there it's single index
-            fi7, d2 = parse_cs(i7['cs'], adaptor.i7_index, max_distance)
+                d1 = 0 # presumably it's single index, so no i5
+
+            i7_seq = adaptor.i7_index
+            if i7_reversed and i7_seq is not None:
+                i7_seq = str(Seq(i7_seq).reverse_complement())
+            fi7, d2 = parse_cs(i7['cs'], i7_seq, max_distance)
             dists.append(d1+d2)
 
         index_min = min(range(len(dists)), key=dists.__getitem__)

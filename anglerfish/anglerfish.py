@@ -76,6 +76,7 @@ def run_demux(args):
         paf_entries = parse_paf_lines(aln_path)
 
         # Make stats
+        log.info(f" Searching for adaptor hits in {adaptor_bc_name}")
         fragments, singletons, concats, unknowns = layout_matches(adaptor_name+"_i5",adaptor_name+"_i7",paf_entries)
         stats = AlignmentStat(adaptor_bc_name)
         stats.compute_pafstats(num_fq, fragments, singletons, concats, unknowns)
@@ -83,18 +84,32 @@ def run_demux(args):
 
         # Demux
         no_matches, matches = cluster_matches(adaptors_sorted[key], fragments, args.max_distance)
-        flipped = False
-        if args.lenient: # Try reverse complementing the I5 index and choose the best match
-            rc_no_matches, rc_matches = cluster_matches(adaptors_sorted[key], fragments, args.max_distance, i5_reversed=True)
-            if len(rc_matches) * 0.2 > len(matches):
-                log.info(f"Reversing I5 index for adaptor {adaptor_name} found at least 80% more matches")
-                no_matches = rc_no_matches
-                matches = rc_matches
-                flipped = True
+        flipped_i7 = False; flipped_i5 = False
+        if args.lenient: # Try reverse complementing the I5 and/or i7 indices and choose the best match
+            flips = {
+                    "i7": {"i7_reversed": True, "i5_reversed": False},
+                    "i5": {"i7_reversed": False, "i5_reversed": True},
+                    "i7+i5": {"i7_reversed": True, "i5_reversed": True}
+            }
+            flipped = {}
+            for flip, rev in flips.items():
+                rc_no_matches, rc_matches = cluster_matches(adaptors_sorted[key], fragments, args.max_distance, **rev)
+                flipped[flip] = (rc_matches, rc_no_matches, len(rc_matches))
+            best_flip = max(zip(flipped.values(), flipped.keys()))[1]
+            print(best_flip, flipped[best_flip][2])
+            # There are no barcode flips with unambiguously more matches, so we abort
+            if sorted([i[2] for i in flipped.values()])[-1] == sorted([i[2] for i in flipped.values()])[-2]:
+                log.info(f"Could not find any barcode reverse complements with unambiguously more matches")
+            elif flipped[best_flip][2] * 0.2 > len(matches):
+                log.info(f"Reverse complementing {best_flip} index for adaptor {adaptor_name} found at least 80% more matches")
+                matches, no_matches, _ = flipped[best_flip]
+                flipped_i7, flipped_i5 = flips[best_flip].values()
+            else:
+                log.info(f"Using original index orientation for {adaptor_name}")
 
         for k, v in groupby(sorted(matches,key=lambda x: x[3]), key=lambda y: y[3]):
 
-            ## To avoid collisions in fastq filenames, we add the ONT barcode to the sample name
+            # To avoid collisions in fastq filenames, we add the ONT barcode to the sample name
             fq_prefix = k
             if ont_barcode:
                 fq_prefix = ont_barcode+"-"+fq_prefix
@@ -110,13 +125,15 @@ def run_demux(args):
             rmean = np.round(np.mean(rlens),2)
             rstd = np.round(np.std(rlens),2)
 
-            sample_stat = SampleStat(k, len(sample_dict.keys()), rmean, rstd, flipped, ont_barcode)
+            sample_stat = SampleStat(k, len(sample_dict.keys()), rmean, rstd, flipped_i7, flipped_i5, ont_barcode)
             report.add_sample_stat(sample_stat)
             if not args.skip_demux:
                 write_demuxedfastq(sample_dict, fastq_path, fq_name)
 
         # Top unmatched indexes
         nomatch_count = Counter([x[3] for x in no_matches])
+        if args.max_unknowns == None:
+            args.max_unknowns = len([sample for sample in ss]) + 10
         report.add_unmatched_stat(nomatch_count.most_common(args.max_unknowns), ont_barcode, adaptor_name)
 
     # Check if there were samples in the samplesheet without adaptor alignments and add them to report
@@ -140,7 +157,7 @@ def anglerfish():
     parser.add_argument('--skip_demux', '-c', action='store_true', help='Only do BC counting and not demuxing')
     parser.add_argument('--skip_fastqc', '-f', action='store_true', help=argparse.SUPPRESS)
     parser.add_argument('--max-distance', '-m', type=int, help='Manually set maximum edit distance for BC matching, automatically set this is set to either 1 or 2')
-    parser.add_argument('--max-unknowns', '-u', type=int, default=10, help='Maximum number of unknown indices to show in the output (default: 10)')
+    parser.add_argument('--max-unknowns', '-u', type=int, help='Maximum number of unknown indices to show in the output (default: length of samplesheet + 10)')
     parser.add_argument('--run_name', '-r', default='anglerfish', help='Name of the run (default: anglerfish)')
     parser.add_argument('--lenient', '-l', action='store_true', help='Will try reverse complementing the I5 index and choose the best match. USE WITH EXTREME CAUTION!')
     parser.add_argument('--ont_barcodes', '-n', action='store_true', help='Will assume the samplesheet refers to a single ONT run prepped with a barcoding kit. And will treat each barcode separately')

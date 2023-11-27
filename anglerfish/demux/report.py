@@ -31,7 +31,7 @@ class Report(object):
                     f.write(f"{j[0]}\t{i} ({j[1]*100:.2f}%)\n")
             f.write("\n{}\n".format("\t".join(getattr(SampleStat, "header"))))
             for sample in self.sample_stats:
-                f.write(f"{sample.sample_name}\t{sample.num_reads}\t{sample.mean_read_len}\t{sample.std_read_len}\t{sample.i5_reversed}\t{sample.ont_barcode}\n")
+                f.write(f"{sample.sample_name}\t{sample.num_reads}\t{sample.mean_read_len}\t{sample.std_read_len}\t{sample.i7_reversed}\t{sample.i5_reversed}\t{sample.ont_barcode}\n")
             uhead = getattr(Report, 'unmatch_header')
             f.write(f"\n{chr(9).join(uhead)}\n") # chr(9) = tab
             for key, unmatch in self.unmatched_stats.items():
@@ -50,7 +50,7 @@ class Report(object):
         for astat in self.aln_stats:
             json_out["paf_stats"].append(astat.paf_stats)
         for sample in self.sample_stats:
-            slist = [sample.sample_name, sample.num_reads, sample.mean_read_len, sample.std_read_len, sample.i5_reversed, sample.ont_barcode]
+            slist = [sample.sample_name, sample.num_reads, sample.mean_read_len, sample.std_read_len, sample.i7_reversed, sample.i5_reversed, sample.ont_barcode]
             json_out["sample_stats"].append(dict(zip(getattr(SampleStat, "header"),slist)))
         for key, unmatch in self.unmatched_stats.items():
             for idx, mnum in unmatch:
@@ -61,7 +61,7 @@ class Report(object):
     def write_dataframe(self,outdir,samplesheet):
         """Write a dataframe of the stats to a csv file.
             TODO: This needs be cleaned up and made more robust. Especially lock in / decouple from upstream the header names and order:
-            sample_name, num_reads, mean_read_len, std_read_len, i5_reversed, ont_barcode, adaptor_name, i7_index, i5_index 
+            sample_name, num_reads, mean_read_len, std_read_len, i7_reversed, i5_reversed, ont_barcode, adaptor_name, i7_index, i5_index
         """
         out_list = []
         for sample in self.sample_stats:
@@ -116,12 +116,14 @@ class SampleStat:
     num_reads: int
     mean_read_len: float
     std_read_len: float
+    i7_reversed: bool
     i5_reversed: bool
     ont_barcode: str = None
     header: ClassVar[list] = ["sample_name",
                               "#reads", # We specify this for historical reasons
                               "mean_read_len",
                               "std_read_len",
+                              "i7_reversed",
                               "i5_reversed",
                               "ont_barcode"]
 
