@@ -96,7 +96,7 @@ def run_demux(args):
                 rc_no_matches, rc_matches = cluster_matches(adaptors_sorted[key], fragments, args.max_distance, **rev)
                 flipped[flip] = (rc_matches, rc_no_matches, len(rc_matches))
             best_flip = max(zip(flipped.values(), flipped.keys()))[1]
-            print(best_flip, flipped[best_flip][2])
+
             # There are no barcode flips with unambiguously more matches, so we abort
             if sorted([i[2] for i in flipped.values()])[-1] == sorted([i[2] for i in flipped.values()])[-2]:
                 log.info(f"Could not find any barcode reverse complements with unambiguously more matches")
