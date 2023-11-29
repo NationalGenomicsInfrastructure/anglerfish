@@ -83,14 +83,19 @@ def run_demux(args):
         report.add_alignment_stat(stats)
 
         # Demux
-        no_matches, matches = cluster_matches(adaptors_sorted[key], fragments, args.max_distance)
+        no_matches = []; matches = []
         flipped_i7 = False; flipped_i5 = False
-        if args.lenient: # Try reverse complementing the I5 and/or i7 indices and choose the best match
-            flips = {
-                    "i7": {"i7_reversed": True, "i5_reversed": False},
-                    "i5": {"i7_reversed": False, "i5_reversed": True},
-                    "i7+i5": {"i7_reversed": True, "i5_reversed": True}
-            }
+        flips = {
+            "i7": {"i7_reversed": True, "i5_reversed": False},
+            "i5": {"i7_reversed": False, "i5_reversed": True},
+            "i7+i5": {"i7_reversed": True, "i5_reversed": True}
+        }
+        if args.force_rc is not None:
+            log.info(f" Force reverse complementing {args.force_rc} index for adaptor {adaptor_name}. Lenient mode is disabled")
+            no_matches, matches = cluster_matches(adaptors_sorted[key], fragments, args.max_distance, **flips[args.force_rc])
+            flipped_i7, flipped_i5 = flips[args.force_rc].values()
+        elif args.lenient: # Try reverse complementing the I5 and/or i7 indices and choose the best match
+            no_matches, matches = cluster_matches(adaptors_sorted[key], fragments, args.max_distance)
             flipped = {}
             for flip, rev in flips.items():
                 rc_no_matches, rc_matches = cluster_matches(adaptors_sorted[key], fragments, args.max_distance, **rev)
@@ -100,12 +105,14 @@ def run_demux(args):
             # There are no barcode flips with unambiguously more matches, so we abort
             if sorted([i[2] for i in flipped.values()])[-1] == sorted([i[2] for i in flipped.values()])[-2]:
                 log.info(f"Could not find any barcode reverse complements with unambiguously more matches")
-            elif flipped[best_flip][2] * 0.2 > len(matches):
-                log.info(f"Reverse complementing {best_flip} index for adaptor {adaptor_name} found at least 80% more matches")
+            elif flipped[best_flip][2] > len(matches) * args.lenient_factor:
+                log.info(f" Reverse complementing {best_flip} index for adaptor {adaptor_name} found at least {args.lenient_factor} times more matches")
                 matches, no_matches, _ = flipped[best_flip]
                 flipped_i7, flipped_i5 = flips[best_flip].values()
             else:
-                log.info(f"Using original index orientation for {adaptor_name}")
+                log.info(f" Using original index orientation for {adaptor_name}")
+        else:
+            no_matches, matches = cluster_matches(adaptors_sorted[key], fragments, args.max_distance)
 
         for k, v in groupby(sorted(matches,key=lambda x: x[3]), key=lambda y: y[3]):
 
@@ -160,6 +167,8 @@ def anglerfish():
     parser.add_argument('--max-unknowns', '-u', type=int, help='Maximum number of unknown indices to show in the output (default: length of samplesheet + 10)')
     parser.add_argument('--run_name', '-r', default='anglerfish', help='Name of the run (default: anglerfish)')
     parser.add_argument('--lenient', '-l', action='store_true', help='Will try reverse complementing the I5 and/or I7 indices and choose the best match.')
+    parser.add_argument('--lenient_factor', '-x', default=4.0, type=float, help='If lenient is set, this is the minimum factor of additional matches required to reverse complement the index (default: 4.0)')
+    parser.add_argument('--force_rc', '-p', choices=['i7', 'i5', 'i7+i5'], help='Force reverse complementing the I5 and/or I7 indices. This will disregard lenient mode.')
     parser.add_argument('--ont_barcodes', '-n', action='store_true', help='Will assume the samplesheet refers to a single ONT run prepped with a barcoding kit. And will treat each barcode separately')
     parser.add_argument('--debug', '-d', action='store_true', help='Extra commandline output')
     parser.add_argument('--version', '-v', action='version', help='Print version and quit', version=f'anglerfish {pkg_resources.get_distribution("bio-anglerfish").version}')
