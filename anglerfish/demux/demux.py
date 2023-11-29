@@ -94,7 +94,6 @@ def layout_matches(i5_name, i7_name, paf_entries):
         - unknowns. Any other reads
     """
 
-    log.info(" Searching for adaptor hits")
     fragments = {}; singletons = {}; concats = {}; unknowns = {}
     for read, entry_list in paf_entries.items():
         sorted_entries = []
@@ -119,7 +118,7 @@ def layout_matches(i5_name, i7_name, paf_entries):
     return (fragments, singletons, concats, unknowns)
 
 
-def cluster_matches(sample_adaptor, matches, max_distance, i5_reversed=False):
+def cluster_matches(sample_adaptor, matches, max_distance, i7_reversed=False, i5_reversed=False):
 
     # Only illumina fragments
     matched = {}; matched_bed = []; unmatched_bed = []
@@ -139,15 +138,19 @@ def cluster_matches(sample_adaptor, matches, max_distance, i5_reversed=False):
 
         dists = []
         fi5 = ""; fi7 = ""
-        for _, adaptor in sample_adaptor:
+        for _, adaptor, _ in sample_adaptor:
             try:
                 i5_seq = adaptor.i5_index
-                if i5_reversed:
+                if i5_reversed and i5_seq is not None:
                     i5_seq = str(Seq(i5_seq).reverse_complement())
                 fi5, d1 = parse_cs(i5['cs'], i5_seq, max_distance)
             except AttributeError:
-                d1 = 0 # presumably there it's single index
-            fi7, d2 = parse_cs(i7['cs'], adaptor.i7_index, max_distance)
+                d1 = 0 # presumably it's single index, so no i5
+
+            i7_seq = adaptor.i7_index
+            if i7_reversed and i7_seq is not None:
+                i7_seq = str(Seq(i7_seq).reverse_complement())
+            fi7, d2 = parse_cs(i7['cs'], i7_seq, max_distance)
             dists.append(d1+d2)
 
         index_min = min(range(len(dists)), key=dists.__getitem__)
@@ -161,22 +164,25 @@ def cluster_matches(sample_adaptor, matches, max_distance, i5_reversed=False):
             log.debug(" Erroneous / overlapping adaptor matches")
             continue
         if dists[index_min] > max_distance:
-            log.debug(" No match")
+            log.debug(f" No match {fi7}-{fi5}")
             # Find only full length i7(+i5) adaptor combos. Basically a list of "known unknowns"
             if len(fi7) + len(fi5) == len(adaptor.i7_index or "") + len(adaptor.i5_index or ""):
                 fi75 = "+".join([i for i in [fi7, fi5] if not i == ""])
                 unmatched_bed.append([read, start_insert, end_insert, fi75, "999", "."])
             continue
         matched[read] = alignments
+        log.debug(f" Matched {read} to {adaptor.i7_index}-{adaptor.i5_index}")
         matched_bed.append([read, start_insert, end_insert, sample_adaptor[index_min][0], "999", "."])
     return unmatched_bed, matched_bed
 
 
 
 def write_demuxedfastq(beds, fastq_in, fastq_out):
-    # Take a set of coordinates in bed format [[seq1, start, end, ..][seq2, ..]]
-    # from over a set of fastq entries in the input files and do extraction.
-    # TODO: Can be optimized using pigz or rewritten using python threading
+    """
+     Take a set of coordinates in bed format [[seq1, start, end, ..][seq2, ..]]
+     from over a set of fastq entries in the input files and do extraction.
+     TODO: Can be optimized using pigz or rewritten using python threading
+    """
     gz_buf = 131072
     fq_files = glob.glob(fastq_in)
     for fq in fq_files:

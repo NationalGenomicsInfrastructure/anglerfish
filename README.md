@@ -81,10 +81,10 @@ P9712_105, truseq_dual,ATTACTCG-AGGCGAAG,/path/to/ONTreads.fastq.gz
 P9712_106, truseq_dual,ATTACTCG-TAATCTTA,/path/to/ONTreads.fastq.gz
 ```
 
-Or using single index:
+Or using single index (note samplesheet supports wildcard `*` use):
 
 ```
-P12345_101,truseq,CAGGACGT,/path/to/ONTreads.fastq.gz
+P12345_101,truseq,CAGGACGT,/path/to/*.fastq.gz
 ```
 
 Then run:
@@ -114,13 +114,22 @@ anglerfish -s /path/to/samples.csv
 
 ```
 
-#### `--max-unknowns`
+#### `--max-unknowns / -u`
 
 Anglerfish will try to recover indices which are not specified in the samplesheet but follow the specified adaptor setup(s). This is analogous to `undetermined indices` as reported by Illumina demultiplexing. `--max-unknowns` will set the number of such indices reported.
 
-#### `--lenient`
+#### `--lenient / -l`
 
 This will consider both orientations of the I5 barcode and will use the reverse complement (of what was inputted in the samplesheet) only if significantly more reads were matched. This should be used with with extreme care, but the reason for this is that Anglerfish will try to guess which version of the Illumina samplesheet these indices were derived from. See this [guide](https://web.archive.org/web/20230602174828/https://knowledge.illumina.com/software/general/software-general-reference_material-list/000001800) for when i5 should be reverse complemented and not.
+
+#### `--ont_barcodes / -n`
+
+This is an ONT barcode aware mode. Which means each ONT barcode will be mapped and treated separately. A use case for this might be to put one Illumina pool per ONT barcode to spot potential index collisions you don't know of if you want to later make a pool of pools for sequencing in the same lane. This mode requires the fastq files to be placed in folders named `barcode01`, `barcode02`, etc. as is the default for MinKNOW (23.04). Example of such an anglerfish samplesheet:
+
+```
+P12345_101,truseq,CAGGACGT,/path/to/barcode01/*.fastq.gz
+P54321_101,truseq,ATTACTCG,/path/to/barcode02/*.fastq.gz
+```
 
 ### Output files
 

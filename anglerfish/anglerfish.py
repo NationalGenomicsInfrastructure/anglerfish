@@ -3,7 +3,6 @@ import argparse
 import logging
 import glob
 import os
-import json
 import pkg_resources
 import numpy as np
 import uuid
@@ -22,7 +21,7 @@ def run_demux(args):
 
     run_uuid = str(uuid.uuid4())
     os.mkdir(args.out_fastq)
-    ss = SampleSheet(args.samplesheet)
+    ss = SampleSheet(args.samplesheet, args.ont_barcodes)
     version = pkg_resources.get_distribution("bio-anglerfish").version
     report = Report(args.run_name, run_uuid, version)
 
@@ -30,9 +29,6 @@ def run_demux(args):
     log.info(f" arguments {vars(args)}")
     log.info(f" run uuid {run_uuid}")
     bc_dist = ss.minimum_bc_distance()
-    if bc_dist == 0:
-        log.error("There is one or more identical barcodes in the input samplesheet. Aborting!")
-        exit()
     if args.max_distance == None:
         if bc_dist > 1:
             args.max_distance = 2
@@ -45,23 +41,25 @@ def run_demux(args):
     log.debug(f"Samplesheet bc_dist == {bc_dist}")
 
     # Sort the adaptors by type and size
-    adaptors_t = [(adaptor.name, os.path.abspath(fastq)) for _, adaptor, fastq in ss]
+    adaptors_t = [(entry.adaptor.name, entry.ont_barcode) for entry in ss]
     adaptor_set = set(adaptors_t)
     adaptors_sorted = dict([(i, []) for i in adaptor_set])
-    for sample, adaptor, fastq in ss:
-        adaptors_sorted[(adaptor.name, os.path.abspath(fastq))].append((sample, adaptor))
+    for entry in ss:
+        adaptors_sorted[(entry.adaptor.name, entry.ont_barcode)].append((entry.sample_name, entry.adaptor, os.path.abspath(entry.fastq)))
 
-    paf_stats = {}
     out_fastqs = []
-
     for key, sample in adaptors_sorted.items():
 
-        adaptor_name, fastq_path = key
+        adaptor_name, ont_barcode = key
+        fastq_path = sample[0][2]
+        # If there are multiple ONT barcodes, we need to add the ONT barcode to the adaptor name
+        adaptor_bc_name = adaptor_name
+        if ont_barcode:
+            adaptor_bc_name = adaptor_name+"_"+ont_barcode
         fastq_files = glob.glob(fastq_path)
 
-        assert adaptor_name not in paf_stats, f"Duplicate adaptor name {adaptor_name} in samplesheet"
-
-        aln_path = os.path.join(args.out_fastq, f"{adaptor_name}.paf")
+        # Align
+        aln_path = os.path.join(args.out_fastq, f"{adaptor_bc_name}.paf")
         adaptor_path = os.path.join(args.out_fastq,f"{adaptor_name}.fasta")
         with open(adaptor_path, "w") as f:
             f.write(ss.get_fastastring(adaptor_name))
@@ -78,23 +76,44 @@ def run_demux(args):
         paf_entries = parse_paf_lines(aln_path)
 
         # Make stats
+        log.info(f" Searching for adaptor hits in {adaptor_bc_name}")
         fragments, singletons, concats, unknowns = layout_matches(adaptor_name+"_i5",adaptor_name+"_i7",paf_entries)
-        stats = AlignmentStat(adaptor_name)
+        stats = AlignmentStat(adaptor_bc_name)
         stats.compute_pafstats(num_fq, fragments, singletons, concats, unknowns)
         report.add_alignment_stat(stats)
 
+        # Demux
         no_matches, matches = cluster_matches(adaptors_sorted[key], fragments, args.max_distance)
-        flipped = False
-        if args.lenient:
-            rc_no_matches, rc_matches = cluster_matches(adaptors_sorted[key], fragments, args.max_distance, i5_reversed=True)
-            if len(rc_matches) * 0.2 > len(matches):
-                log.info(f"Reversing I5 index for adaptor {adaptor_name} found at least 80% more matches")
-                no_matches = rc_no_matches
-                matches = rc_matches
-                flipped = True
+        flipped_i7 = False; flipped_i5 = False
+        if args.lenient: # Try reverse complementing the I5 and/or i7 indices and choose the best match
+            flips = {
+                    "i7": {"i7_reversed": True, "i5_reversed": False},
+                    "i5": {"i7_reversed": False, "i5_reversed": True},
+                    "i7+i5": {"i7_reversed": True, "i5_reversed": True}
+            }
+            flipped = {}
+            for flip, rev in flips.items():
+                rc_no_matches, rc_matches = cluster_matches(adaptors_sorted[key], fragments, args.max_distance, **rev)
+                flipped[flip] = (rc_matches, rc_no_matches, len(rc_matches))
+            best_flip = max(zip(flipped.values(), flipped.keys()))[1]
+
+            # There are no barcode flips with unambiguously more matches, so we abort
+            if sorted([i[2] for i in flipped.values()])[-1] == sorted([i[2] for i in flipped.values()])[-2]:
+                log.info(f"Could not find any barcode reverse complements with unambiguously more matches")
+            elif flipped[best_flip][2] * 0.2 > len(matches):
+                log.info(f"Reverse complementing {best_flip} index for adaptor {adaptor_name} found at least 80% more matches")
+                matches, no_matches, _ = flipped[best_flip]
+                flipped_i7, flipped_i5 = flips[best_flip].values()
+            else:
+                log.info(f"Using original index orientation for {adaptor_name}")
 
         for k, v in groupby(sorted(matches,key=lambda x: x[3]), key=lambda y: y[3]):
-            fq_name = os.path.join(args.out_fastq, k+".fastq.gz")
+
+            # To avoid collisions in fastq filenames, we add the ONT barcode to the sample name
+            fq_prefix = k
+            if ont_barcode:
+                fq_prefix = ont_barcode+"-"+fq_prefix
+            fq_name = os.path.join(args.out_fastq, fq_prefix+".fastq.gz")
             out_fastqs.append(fq_name)
             sample_dict = {i[0]: [i] for i in v}
 
@@ -106,23 +125,26 @@ def run_demux(args):
             rmean = np.round(np.mean(rlens),2)
             rstd = np.round(np.std(rlens),2)
 
-            sample_stat = SampleStat(k, len(sample_dict.keys()), rmean, rstd, flipped)
+            sample_stat = SampleStat(k, len(sample_dict.keys()), rmean, rstd, flipped_i7, flipped_i5, ont_barcode)
             report.add_sample_stat(sample_stat)
             if not args.skip_demux:
                 write_demuxedfastq(sample_dict, fastq_path, fq_name)
 
-        # Check if there were samples in the samplesheet without adaptor alignments and add them to report
-        for ss_sample, _, _ in ss:
-            if ss_sample not in [s.sample_name for s in [stat for stat in report.sample_stats]]:
-                sample_stat = SampleStat(ss_sample, 0, 0, 0, False)
-                report.add_sample_stat(sample_stat)
-
         # Top unmatched indexes
         nomatch_count = Counter([x[3] for x in no_matches])
-        report.add_unmatched_stat(nomatch_count.most_common(args.max_unknowns))
+        if args.max_unknowns == None:
+            args.max_unknowns = len([sample for sample in ss]) + 10
+        report.add_unmatched_stat(nomatch_count.most_common(args.max_unknowns), ont_barcode, adaptor_name)
+
+    # Check if there were samples in the samplesheet without adaptor alignments and add them to report
+    for entry in ss:
+        if entry.sample_name not in [s.sample_name for s in [stat for stat in report.sample_stats]]:
+            sample_stat = SampleStat(entry.sample_name, 0, 0, 0, False, ont_barcode)
+            report.add_sample_stat(sample_stat)
 
     report.write_report(args.out_fastq)
     report.write_json(args.out_fastq)
+    report.write_dataframe(args.out_fastq, ss)
 
     if args.skip_fastqc:
         log.warning(" As of version 0.4.1, built in support for FastQC + MultiQC is removed. The '-f' flag is redundant.")
@@ -135,9 +157,10 @@ def anglerfish():
     parser.add_argument('--skip_demux', '-c', action='store_true', help='Only do BC counting and not demuxing')
     parser.add_argument('--skip_fastqc', '-f', action='store_true', help=argparse.SUPPRESS)
     parser.add_argument('--max-distance', '-m', type=int, help='Manually set maximum edit distance for BC matching, automatically set this is set to either 1 or 2')
-    parser.add_argument('--max-unknowns', '-u', type=int, default=10, help='Maximum number of unknown indices to show in the output (default: 10)')
+    parser.add_argument('--max-unknowns', '-u', type=int, help='Maximum number of unknown indices to show in the output (default: length of samplesheet + 10)')
     parser.add_argument('--run_name', '-r', default='anglerfish', help='Name of the run (default: anglerfish)')
-    parser.add_argument('--lenient', '-l', action='store_true', help='Will try reverse complementing the I5 index and choose the best match. USE WITH EXTREME CAUTION!')
+    parser.add_argument('--lenient', '-l', action='store_true', help='Will try reverse complementing the I5 and/or I7 indices and choose the best match.')
+    parser.add_argument('--ont_barcodes', '-n', action='store_true', help='Will assume the samplesheet refers to a single ONT run prepped with a barcoding kit. And will treat each barcode separately')
     parser.add_argument('--debug', '-d', action='store_true', help='Extra commandline output')
     parser.add_argument('--version', '-v', action='version', help='Print version and quit', version=f'anglerfish {pkg_resources.get_distribution("bio-anglerfish").version}')
     args = parser.parse_args()

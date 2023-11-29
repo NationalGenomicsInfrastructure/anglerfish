@@ -11,32 +11,29 @@ jobs:
 
     steps:
       # Checkout code and install miniconda + environment
-      - uses: actions/checkout@v2
-      - uses: conda-incubator/setup-miniconda@v2
+      - uses: actions/checkout@v4
+      - uses: mamba-org/setup-micromamba@v1
         with:
-           activate-environment: anglerfish
+           init-shell: bash
+           create-args: >-
+            python=${{ matrix.python-version }}
+            pip
            environment-file: environment.yml
-           python-version: ${{ matrix.python-version }}
-           auto-update-conda: true
-           auto-activate-base: false
 
       # Install Anglerfish
       - shell: bash -l {0}
         name: Install Anglerfish
         run: |
-          conda activate anglerfish
           python -m pip install .
 
       # Run anglerfish --help
       - shell: bash -l {0}
         name: Test anglerfish
         run: | 
-          conda activate anglerfish
           anglerfish --help
 
       # Run anglerfish using test data
       - shell: bash -l {0}
         name: Run anglerfish with test data
         run: |
-          conda activate anglerfish
           anglerfish -s test/samples.csv

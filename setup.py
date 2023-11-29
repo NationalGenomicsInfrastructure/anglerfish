@@ -11,12 +11,11 @@ Or from bioconda:
     conda install -c bioconda anglerfish
 """
 from setuptools import setup, find_packages
-import sys, os
 from pathlib import Path
 this_directory = Path(__file__).parent
 long_description = (this_directory / "README.md").read_text()
 
-version='0.5.0'
+version='0.6.0'
 
 setup(
     name='bio-anglerfish',
@@ -32,7 +31,7 @@ setup(
     packages = find_packages(),
     package_data = {"":["config/adaptors.yaml"]},
     install_requires=[
-        'python-levenshtein==0.12.1',
+        'python-levenshtein==0.23.0',
         'biopython==1.79',
         'numpy==1.22.0',
         'pyyaml==6.0'
