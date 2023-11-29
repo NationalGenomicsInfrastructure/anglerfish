@@ -159,7 +159,7 @@ def anglerfish():
     parser.add_argument('--max-distance', '-m', type=int, help='Manually set maximum edit distance for BC matching, automatically set this is set to either 1 or 2')
     parser.add_argument('--max-unknowns', '-u', type=int, help='Maximum number of unknown indices to show in the output (default: length of samplesheet + 10)')
     parser.add_argument('--run_name', '-r', default='anglerfish', help='Name of the run (default: anglerfish)')
-    parser.add_argument('--lenient', '-l', action='store_true', help='Will try reverse complementing the I5 index and choose the best match. USE WITH EXTREME CAUTION!')
+    parser.add_argument('--lenient', '-l', action='store_true', help='Will try reverse complementing the I5 and/or I7 indices and choose the best match.')
     parser.add_argument('--ont_barcodes', '-n', action='store_true', help='Will assume the samplesheet refers to a single ONT run prepped with a barcoding kit. And will treat each barcode separately')
     parser.add_argument('--debug', '-d', action='store_true', help='Extra commandline output')
     parser.add_argument('--version', '-v', action='version', help='Print version and quit', version=f'anglerfish {pkg_resources.get_distribution("bio-anglerfish").version}')
