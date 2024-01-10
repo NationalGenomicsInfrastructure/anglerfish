@@ -1,9 +1,9 @@
 # Anglerfish
+
 [![Anglerfish CI Status](https://github.com/remiolsen/anglerfish/workflows/Anglerfish/badge.svg)](https://github.com/remiolsen/anglerfish/actions)
 [![PyPI](https://img.shields.io/pypi/v/bio-anglerfish)](https://pypi.python.org/pypi/bio-anglerfish/)
 [![Conda (channel only)](https://img.shields.io/conda/vn/bioconda/anglerfish)](https://anaconda.org/bioconda/anglerfish)
 [![Docker Container available](https://img.shields.io/docker/automated/remiolsen/anglerfish.svg)](https://hub.docker.com/r/remiolsen/anglerfish/)
-
 
 ## Introduction
 
@@ -17,18 +17,18 @@ For more information on how this can be used, please see this [poster](docs/AGBT
 
 ### Requirements
 
-* Python3 (3.7)
+- Python3 (3.7)
 
 Python modules:
 
-* biopython v. 1.70
-* python-levenshtein v. 0.12.0
-* numpy v. 1.19.2
-* pyyaml v. 6.0
+- biopython v. 1.70
+- python-levenshtein v. 0.12.0
+- numpy v. 1.19.2
+- pyyaml v. 6.0
 
 Software:
 
-* minimap2 v. 2.20
+- minimap2 v. 2.20
 
 ### From PyPi
 
@@ -65,8 +65,8 @@ pip install --upgrade --force-reinstall git+https://github.com/remiolsen/anglerf
 
 Anglerfish requires two files to run.
 
-  * A basecalled FASTQ file from for instance Guppy (`/path/to/ONTreads.fastq.gz`)
-  * A samplesheet containing the sample names and indices expected to be found in the sequencing run. (`/path/to/samples.csv`)
+- A basecalled FASTQ file from for instance Guppy (`/path/to/ONTreads.fastq.gz`)
+- A samplesheet containing the sample names and indices expected to be found in the sequencing run. (`/path/to/samples.csv`)
 
 Example of a samplesheet file:
 
@@ -135,10 +135,9 @@ P54321_101,truseq,ATTACTCG,/path/to/barcode02/*.fastq.gz
 
 In folder `anglerfish_????_??_??_?????/`
 
-* `*.fastq.gz` Demultiplexed reads (if any)
-* `anglerfish_stats.txt` Barcode statistics from anglerfish run
-* `anglerfish_stats.json` Machine readable anglerfish statistics
-
+- `*.fastq.gz` Demultiplexed reads (if any)
+- `anglerfish_stats.txt` Barcode statistics from anglerfish run
+- `anglerfish_stats.json` Machine readable anglerfish statistics
 
 ## Credits
 
