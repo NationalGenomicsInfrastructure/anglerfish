@@ -1,6 +1,7 @@
 import csv
 import glob
 import importlib.resources
+import os
 import re
 from dataclasses import dataclass
 from itertools import combinations
@@ -9,6 +10,7 @@ import Levenshtein as lev
 import yaml
 
 p = importlib.resources.files("anglerfish.config").joinpath("adaptors.yaml")
+assert isinstance(p, os.PathLike)
 with open(p) as stream:
     adaptors = yaml.safe_load(stream)
 delim = "-NNN-"
