@@ -17,6 +17,10 @@ select =[
     "UP",   # pyupgrade     Make sure syntax is up-to-date
 ]
 
+ignore = [
+    "E741", # ambiguous variable name
+]
+
 [tool.mypy]
 ignore_missing_imports = true
 follow_imports = 'skip'

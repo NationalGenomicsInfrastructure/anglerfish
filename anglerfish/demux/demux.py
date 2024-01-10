@@ -47,7 +47,7 @@ def run_minimap2(fastq_in, indexfile, output_paf, threads):
     ]
 
     with open(output_paf, "ab") as ofile:
-        proc = subprocess.run(cmd, stdout=ofile, check=True)
+        subprocess.run(cmd, stdout=ofile, check=True)
 
 
 def parse_paf_lines(paf, min_qual=10):

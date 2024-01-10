@@ -37,7 +37,7 @@ def run_demux(args):
     log.info(f" arguments {vars(args)}")
     log.info(f" run uuid {run_uuid}")
     bc_dist = ss.minimum_bc_distance()
-    if args.max_distance == None:
+    if args.max_distance is None:
         if bc_dist > 1:
             args.max_distance = 2
         else:
@@ -75,7 +75,7 @@ def run_demux(args):
         with open(adaptor_path, "w") as f:
             f.write(ss.get_fastastring(adaptor_name))
         for fq in fastq_files:
-            retcode = run_minimap2(fq, adaptor_path, aln_path, args.threads)
+            run_minimap2(fq, adaptor_path, aln_path, args.threads)
 
         # Easy line count in input fastq files
         num_fq = 0
@@ -181,7 +181,7 @@ def run_demux(args):
 
         # Top unmatched indexes
         nomatch_count = Counter([x[3] for x in no_matches])
-        if args.max_unknowns == None:
+        if args.max_unknowns is None:
             args.max_unknowns = len([sample for sample in ss]) + 10
         report.add_unmatched_stat(
             nomatch_count.most_common(args.max_unknowns), ont_barcode, adaptor_name
