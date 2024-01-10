@@ -1,0 +1,135 @@
+name: lint-code
+on: [push, pull_request]
+
+# Cancel if a newer run is started
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Use ruff to check for code style violations
+  ruff-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff
+      - name: ruff --> Check for style violations
+        # Configured in pyproject.toml
+        run: ruff check .
+
+  # Use ruff to check code formatting
+  ruff-format:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff
+      - name: ruff --> Check code formatting
+        run: ruff format --check .
+
+  # Use mypy for static type checking
+  mypy-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install mypy
+      # Start by installing type stubs
+      - name: mypy --> Install stubs
+        run: echo -e "y" | mypy --install-types **/*.py || exit 0
+      - name: mypy --> Static type checking
+        # Configured in pyprojet.toml
+        run: mypy **/*.py
+
+  # Use pipreqs to check for missing dependencies
+  pipreqs-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - name: Install pipreqs
+        run: pip install pipreqs
+
+      - name: Install requirements
+        run: pip install -r requirements.txt
+
+      - name: Run pipreqs
+        run: pipreqs --savepath pipreqs.txt
+
+      - name: Compare requirements
+        run: |
+          # Extract and sort package names
+          awk '{print $1}' $1 | sort -u > "$1".compare
+          awk -F'==' '{print $1}' $2 | sort -u > "$2".compare
+
+          # Compare package lists
+          if cmp -s "$1".compare "$2".compare
+          then
+            echo "Requirements are the same"
+            exit 0
+          else
+            echo "Requirements are different"
+            exit 1
+          fi
+
+    # Use Prettier to check various file formats
+  prettier:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Prettier
+        run: npm install -g prettier
+
+      - name: Run Prettier --check
+        run: prettier --check .
+
+  # Use editorconfig to check all remaining file formats
+  editorconfig:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install editorconfig-checker
+        run: npm install -g editorconfig-checker
+
+      - name: editorconfig --> Lint files
+        run: editorconfig-checker $(git ls-files | grep -v '.py\|.md\|.json\|.yml\|.yaml\|.html')

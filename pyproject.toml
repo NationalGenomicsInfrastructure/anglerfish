@@ -1,3 +1,22 @@
 [build-system]
 requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
+
+[tool.ruff.lint]
+select =[
+    #         Ruff default rules
+    # ------------------------------
+    "E4",   # pycodestyle Imports
+    "E7",   # pycodestyle Statements
+    "E9",   # pycodestyle Runtime
+    "F",    # Pyflakes
+
+    #         Additional    Comment
+    # ------------------------------------------------------
+    "I",    # isort         Best-practice sorting of imports
+    "UP",   # pyupgrade     Make sure syntax is up-to-date
+]
+
+[tool.mypy]
+ignore_missing_imports = true
+follow_imports = 'skip'
