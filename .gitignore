@@ -5,3 +5,4 @@
 .benchmarks
 .*_cache
 node_modules
+.vscode

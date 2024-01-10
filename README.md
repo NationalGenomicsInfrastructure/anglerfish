@@ -42,9 +42,17 @@ pip install bio-anglerfish
 conda install -c bioconda anglerfish
 ```
 
-### Manually with Conda
+### Install development version
 
-First [install miniconda](https://docs.conda.io/en/latest/miniconda.html), then:
+```
+pip install --upgrade --force-reinstall git+https://github.com/remiolsen/anglerfish.git
+```
+
+## Source development
+
+1. [Install miniconda](https://docs.conda.io/en/latest/miniconda.html).
+
+2. Set up repo clone with editable install
 
 ```
 git clone https://github.com/remiolsen/anglerfish.git
@@ -52,20 +60,34 @@ cd anglerfish
 # Create a the anglerfish conda environment
 conda env create -f environment.yml
 # Install anglerfish
+conda activate anglerfish
 pip install -e .
 ```
 
-### Developer tools
+3. Install developer tools
 
 ```
 conda install --file requirements-dev-conda.txt
 pip install -r requirements-dev-pip.txt
 ```
 
-### Development version
+4. (Optional) Install pre-commit to prevent committing code that will fail linting
 
 ```
-pip install --upgrade --force-reinstall git+https://github.com/remiolsen/anglerfish.git
+pre-commit install
+```
+
+5. (Optional) Enable automatic formatting in VS Code by creating `.vscode/settings.json` with:
+
+```
+{
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "[python]": {
+    "editor.defaultFormatter": "charliermarsh.ruff"
+  },
+  "prettier.configPath": "./pyproject.toml"
+}
 ```
 
 ## Usage
