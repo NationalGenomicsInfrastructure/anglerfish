@@ -1,10 +1,10 @@
-import os
 import json
-from dataclasses import dataclass, asdict
+import os
+from dataclasses import asdict, dataclass
 from typing import ClassVar
 
 
-class Report(object):
+class Report:
     unmatch_header = ["index", "num_reads", "ont_barcode"]
 
     def __init__(self, run_name, uuid, version):
@@ -42,7 +42,7 @@ class Report(object):
             f.write(f"\n{chr(9).join(uhead)}\n")  # chr(9) = tab
             for key, unmatch in self.unmatched_stats.items():
                 for idx, mnum in unmatch:
-                    f.write("{}\t{}\t{}\n".format(idx, mnum, key[0]))
+                    f.write(f"{idx}\t{mnum}\t{key[0]}\n")
 
     def write_json(self, outdir):
         json_out = {
@@ -112,7 +112,7 @@ class Report(object):
                 f.write("\n")
 
 
-class AlignmentStat(object):
+class AlignmentStat:
     def __init__(self, adaptor_name):
         self.adaptor_name = adaptor_name
         self.paf_stats = {}

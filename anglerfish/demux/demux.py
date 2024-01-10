@@ -1,11 +1,12 @@
 import glob
-import re
-import logging
-import Levenshtein as lev
-import subprocess
 import io
-from Bio.SeqIO.QualityIO import FastqGeneralIterator
+import logging
+import re
+import subprocess
+
+import Levenshtein as lev
 from Bio.Seq import Seq
+from Bio.SeqIO.QualityIO import FastqGeneralIterator
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("demux")
@@ -55,7 +56,7 @@ def parse_paf_lines(paf, min_qual=10):
     Returns a dict with the import values for later use
     """
     entries = {}
-    with open(paf, "r") as paf:
+    with open(paf) as paf:
         for paf_line in paf:
             aln = paf_line.split()
             try:
@@ -228,7 +229,7 @@ def write_demuxedfastq(beds, fastq_in, fastq_out):
                         for bed in beds[new_title[0]]:
                             new_title[0] += "_" + bed[3]
                             outfqs += "@{}\n".format(" ".join(new_title))
-                            outfqs += "{}\n".format(seq[bed[1] : bed[2]])
+                            outfqs += f"{seq[bed[1] : bed[2]]}\n"
                             outfqs += "+\n"
-                            outfqs += "{}\n".format(qual[bed[1] : bed[2]])
+                            outfqs += f"{qual[bed[1] : bed[2]]}\n"
                         oz.stdin.write(outfqs.encode("utf-8"))

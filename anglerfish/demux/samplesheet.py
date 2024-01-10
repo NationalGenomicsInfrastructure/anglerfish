@@ -1,15 +1,15 @@
 import csv
-import Levenshtein as lev
 import glob
+import importlib.resources
 import re
 from dataclasses import dataclass
 from itertools import combinations
-import yaml
-import importlib.resources
 
+import Levenshtein as lev
+import yaml
 
 p = importlib.resources.files("anglerfish.config").joinpath("adaptors.yaml")
-with open(p, "r") as stream:
+with open(p) as stream:
     adaptors = yaml.safe_load(stream)
 delim = "-NNN-"
 
@@ -22,7 +22,7 @@ class SampleSheetEntry:
     ont_barcode: str
 
 
-class Adaptor(object):
+class Adaptor:
     def __init__(self, adaptor, i7_index=None, i5_index=None):
         self.i5 = adaptors[adaptor]["i5"]
         self.i7 = adaptors[adaptor]["i7"]
@@ -48,7 +48,7 @@ class Adaptor(object):
             return self.i7
 
 
-class SampleSheet(object):
+class SampleSheet:
     def __init__(self, input_csv, ont_bc):
         # Read samplesheet in format:
         # sample_name, adaptors, i7_index(-i5_index), fastq_path
@@ -56,7 +56,7 @@ class SampleSheet(object):
 
         self.samplesheet = []
         try:
-            csvfile = open(input_csv, "r")
+            csvfile = open(input_csv)
             dialect = csv.Sniffer().sniff(csvfile.readline(), [",", ";", "\t"])
             csvfile.seek(0)
             data = csv.DictReader(
@@ -104,7 +104,7 @@ class SampleSheet(object):
             for a, b in combinations(test_globs.values(), 2):
                 if len(set(a) & set(b)) > 0:
                     raise UserWarning(
-                        f"Fastq paths are inconsistent. Please check samplesheet"
+                        "Fastq paths are inconsistent. Please check samplesheet"
                     )
 
             if not ont_bc and len(set([v[0] for v in test_globs.values()])) > 1:
@@ -163,7 +163,7 @@ class SampleSheet(object):
 
         outstr = ""
         for key, seq in fastas.items():
-            outstr += ">{}\n{}\n".format(key, seq)
+            outstr += f">{key}\n{seq}\n"
 
         return outstr
 

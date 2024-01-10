@@ -1,24 +1,26 @@
 #!/usr/bin/env python
 import argparse
-import logging
 import glob
+import gzip
+import logging
 import os
-import pkg_resources
-import numpy as np
 import uuid
+from collections import Counter
 from datetime import datetime as dt
 from itertools import groupby
-from collections import Counter
+
+import numpy as np
+import pkg_resources
+
 from .demux.demux import (
-    run_minimap2,
-    parse_paf_lines,
-    layout_matches,
     cluster_matches,
+    layout_matches,
+    parse_paf_lines,
+    run_minimap2,
     write_demuxedfastq,
 )
+from .demux.report import AlignmentStat, Report, SampleStat
 from .demux.samplesheet import SampleSheet
-from .demux.report import Report, SampleStat, AlignmentStat
-import gzip
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("anglerfish")
@@ -132,7 +134,7 @@ def run_demux(args):
                 == sorted([i[2] for i in flipped.values()])[-2]
             ):
                 log.info(
-                    f"Could not find any barcode reverse complements with unambiguously more matches"
+                    "Could not find any barcode reverse complements with unambiguously more matches"
                 )
             elif flipped[best_flip][2] > len(matches) * args.lenient_factor:
                 log.info(
