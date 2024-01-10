@@ -55,6 +55,13 @@ conda env create -f environment.yml
 pip install -e .
 ```
 
+### Developer tools
+
+```
+conda install --file requirements-dev-conda.txt
+pip install -r requirements-dev-pip.txt
+```
+
 ### Development version
 
 ```
