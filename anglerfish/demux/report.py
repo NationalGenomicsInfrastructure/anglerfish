@@ -150,7 +150,7 @@ class SampleStat:
     std_read_len: float
     i7_reversed: bool
     i5_reversed: bool
-    ont_barcode: str|None = None
+    ont_barcode: str | None = None
     header: ClassVar[list] = [
         "sample_name",
         "#reads",  # We specify this for historical reasons
