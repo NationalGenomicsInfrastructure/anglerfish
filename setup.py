@@ -17,26 +17,26 @@ from setuptools import find_packages, setup
 this_directory = Path(__file__).parent
 long_description = (this_directory / "README.md").read_text()
 
-version = "0.6.0"
+version='0.6.1-dev'
 
 setup(
     name="bio-anglerfish",
     version=version,
     description="Anglerfish, a tool to demultiplex Illumina libraries from ONT data",
     long_description=long_description,
-    long_description_content_type="text/markdown",
-    author="Remi-Andre Olsen",
-    author_email="remi-andre.olsen@scilifelab.se",
-    url="https://github.com/remiolsen/anglerfish",
-    license="MIT",
-    python_requires=">=3.7",
-    packages=find_packages(),
-    package_data={"": ["config/adaptors.yaml"]},
+    long_description_content_type='text/markdown',
+    author='Remi-Andre Olsen',
+    author_email='remi-andre.olsen@scilifelab.se',
+    url='https://github.com/remiolsen/anglerfish',
+    license='MIT',
+    python_requires=">=3.10",
+    packages = find_packages(),
+    package_data = {"":["config/adaptors.yaml"]},
     install_requires=[
-        "python-levenshtein==0.23.0",
-        "biopython==1.79",
-        "numpy==1.22.0",
-        "pyyaml==6.0",
+        'python-levenshtein==0.23.0',
+        'biopython==1.79',
+        'numpy>=1.22.0',
+        'pyyaml==6.0'
     ],
     entry_points={
         "console_scripts": [
