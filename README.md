@@ -45,7 +45,7 @@ cd anglerfish
 # Create a the anglerfish conda environment
 conda env create -f environment.yml
 # Install anglerfish
-conda activate anglerfish
+conda activate anglerfish-dev
 pip install -e ".[dev]"
 ```
 
