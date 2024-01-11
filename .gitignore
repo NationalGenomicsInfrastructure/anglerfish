@@ -2,3 +2,7 @@
 *~
 *.egg-info
 .DS_Store
+.benchmarks
+.*_cache
+node_modules
+.vscode

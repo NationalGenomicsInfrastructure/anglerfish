@@ -1,9 +1,9 @@
 # Anglerfish
+
 [![Anglerfish CI Status](https://github.com/remiolsen/anglerfish/workflows/Anglerfish/badge.svg)](https://github.com/remiolsen/anglerfish/actions)
 [![PyPI](https://img.shields.io/pypi/v/bio-anglerfish)](https://pypi.python.org/pypi/bio-anglerfish/)
 [![Conda (channel only)](https://img.shields.io/conda/vn/bioconda/anglerfish)](https://anaconda.org/bioconda/anglerfish)
 [![Docker Container available](https://img.shields.io/docker/automated/remiolsen/anglerfish.svg)](https://hub.docker.com/r/remiolsen/anglerfish/)
-
 
 ## Introduction
 
@@ -27,9 +27,17 @@ pip install bio-anglerfish
 conda install -c bioconda anglerfish
 ```
 
-### Manually with Conda
+### Install development version
 
-First [install miniconda](https://docs.conda.io/en/latest/miniconda.html), then:
+```
+pip install --upgrade --force-reinstall git+https://github.com/remiolsen/anglerfish.git
+```
+
+## Source development
+
+1. [Install miniconda](https://docs.conda.io/en/latest/miniconda.html).
+
+2. Set up repo clone with editable install
 
 ```
 git clone https://github.com/remiolsen/anglerfish.git
@@ -37,21 +45,42 @@ cd anglerfish
 # Create a the anglerfish conda environment
 conda env create -f environment.yml
 # Install anglerfish
+conda activate anglerfish
 pip install -e .
 ```
 
-### Development version
+3. Install developer tools
 
 ```
-pip install --upgrade --force-reinstall git+https://github.com/remiolsen/anglerfish.git
+conda install --file requirements-dev-conda.txt
+pip install -r requirements-dev-pip.txt
+```
+
+4. (Optional) Install pre-commit to prevent committing code that will fail linting
+
+```
+pre-commit install
+```
+
+5. (Optional) Enable automatic formatting in VS Code by creating `.vscode/settings.json` with:
+
+```
+{
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "[python]": {
+    "editor.defaultFormatter": "charliermarsh.ruff"
+  },
+  "prettier.configPath": "./pyproject.toml"
+}
 ```
 
 ## Usage
 
 Anglerfish requires two files to run.
 
-  * A basecalled FASTQ file from for instance Guppy (`/path/to/ONTreads.fastq.gz`)
-  * A samplesheet containing the sample names and indices expected to be found in the sequencing run. (`/path/to/samples.csv`)
+- A basecalled FASTQ file from for instance Guppy (`/path/to/ONTreads.fastq.gz`)
+- A samplesheet containing the sample names and indices expected to be found in the sequencing run. (`/path/to/samples.csv`)
 
 Example of a samplesheet file:
 
@@ -120,10 +149,9 @@ P54321_101,truseq,ATTACTCG,/path/to/barcode02/*.fastq.gz
 
 In folder `anglerfish_????_??_??_?????/`
 
-* `*.fastq.gz` Demultiplexed reads (if any)
-* `anglerfish_stats.txt` Barcode statistics from anglerfish run
-* `anglerfish_stats.json` Machine readable anglerfish statistics
-
+- `*.fastq.gz` Demultiplexed reads (if any)
+- `anglerfish_stats.txt` Barcode statistics from anglerfish run
+- `anglerfish_stats.json` Machine readable anglerfish statistics
 
 ## Credits
 
