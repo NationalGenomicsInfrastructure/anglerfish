@@ -27,13 +27,13 @@ setup(
     author_email='remi-andre.olsen@scilifelab.se',
     url='https://github.com/remiolsen/anglerfish',
     license='MIT',
-    python_requires=">=3.7",
+    python_requires=">=3.10",
     packages = find_packages(),
     package_data = {"":["config/adaptors.yaml"]},
     install_requires=[
         'python-levenshtein==0.23.0',
         'biopython==1.79',
-        'numpy==1.22.0',
+        'numpy>=1.22.0',
         'pyyaml==6.0'
     ],
     entry_points={
