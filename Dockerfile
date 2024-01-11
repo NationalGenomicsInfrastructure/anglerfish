@@ -1,7 +1,7 @@
 FROM mambaorg/micromamba
 
 LABEL author="Remi-Andre Olsen" \
-      description="Anglerfish" \
+      description="Anglerfish development version" \
       maintainer="remi-andre.olsen@scilifelab.se"
 
 USER root
@@ -12,5 +12,5 @@ ENV PATH /opt/conda/envs/anglerfish/bin:$PATH
 # Add source files to the container
 ADD . /usr/src/anglerfish
 WORKDIR /usr/src/anglerfish
-RUN eval "$(micromamba shell hook --shell bash)" && micromamba activate anglerfish && python -m pip install .
+RUN eval "$(micromamba shell hook --shell bash)" && micromamba activate anglerfish && python -m pip install .[dev]
 USER $MAMBA_USER
