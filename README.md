@@ -45,24 +45,17 @@ cd anglerfish
 # Create a the anglerfish conda environment
 conda env create -f environment.yml
 # Install anglerfish
-conda activate anglerfish
-pip install -e .
+conda activate anglerfish-dev
+pip install -e ".[dev]"
 ```
 
-3. Install developer tools
-
-```
-conda install --file requirements-dev-conda.txt
-pip install -r requirements-dev-pip.txt
-```
-
-4. (Optional) Install pre-commit to prevent committing code that will fail linting
+3. (Optional) Install pre-commit to prevent committing code that will fail linting
 
 ```
 pre-commit install
 ```
 
-5. (Optional) Enable automatic formatting in VS Code by creating `.vscode/settings.json` with:
+4. (Optional) Enable automatic formatting in VS Code by creating `.vscode/settings.json` with:
 
 ```
 {

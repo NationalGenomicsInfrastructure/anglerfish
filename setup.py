@@ -38,6 +38,7 @@ setup(
         "numpy>=1.22.0",
         "pyyaml==6.0",
     ],
+    extras_require={"dev": ["ruff", "mypy", "editorconfig-checker"]},
     entry_points={
         "console_scripts": [
             "anglerfish=anglerfish.anglerfish:anglerfish",
