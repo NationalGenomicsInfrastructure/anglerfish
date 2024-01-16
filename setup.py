@@ -30,12 +30,8 @@ setup(
     python_requires=">=3.7",
     packages = find_packages(),
     package_data = {"":["config/adaptors.yaml"]},
-    install_requires=[
-        'python-levenshtein==0.23.0',
-        'biopython==1.79',
-        'numpy==1.22.0',
-        'pyyaml==6.0'
-    ],
+    # Read requirements.txt
+    install_requires=[x.strip() for x in open("requirements.txt").readlines()],
     entry_points={
         "console_scripts": [
             "anglerfish=anglerfish.anglerfish:anglerfish",
