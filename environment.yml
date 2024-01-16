@@ -8,3 +8,5 @@ dependencies:
   - pip
   - pip:
     - -r requirements.txt
+  - conda-forge::pre-commit
+  - conda-forge::prettier
