@@ -7,6 +7,6 @@ dependencies:
   - bioconda::minimap2=2.26
   - pip
   - pip:
-    - -r requirements.txt
+      - -r requirements.txt
   - conda-forge::pre-commit
   - conda-forge::prettier
