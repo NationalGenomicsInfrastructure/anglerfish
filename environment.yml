@@ -1,4 +1,5 @@
-name: anglerfish
+# Development environment for anglerfish
+name: anglerfish-dev
 channels:
   - conda-forge
   - bioconda

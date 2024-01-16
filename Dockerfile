@@ -1,7 +1,7 @@
 FROM mambaorg/micromamba
 
 LABEL author="Remi-Andre Olsen" \
-      description="Anglerfish" \
+      description="Anglerfish development version" \
       maintainer="remi-andre.olsen@scilifelab.se"
 
 USER root
@@ -43,7 +43,9 @@ RUN if [ "$TARGETARCH" = "arm64" ]; then \
 ADD . /usr/src/anglerfish
 WORKDIR /usr/src/anglerfish
 
-RUN micromamba install -y -n base -f /environment.tmp.yml && micromamba clean --all --yes
+# Activate the environment
+ARG MAMBA_DOCKERFILE_ACTIVATE=1
+RUN micromamba install -y -f /environment.tmp.yml && micromamba clean --all --yes
 
-RUN eval "$(micromamba shell hook --shell bash)" && micromamba activate base && python -m pip install . 
+RUN eval "$(micromamba shell hook --shell bash)" && python -m pip install .[dev]
 USER $MAMBA_USER
