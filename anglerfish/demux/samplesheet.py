@@ -1,21 +1,15 @@
 import csv
 import glob
-import importlib.resources
-import os
 import re
 from dataclasses import dataclass
 from itertools import combinations
 
 import Levenshtein as lev
-import yaml
 
-from anglerfish.demux.adaptor import Adaptor
+from anglerfish.demux.adaptor import Adaptor, load_adaptors
 
-p = importlib.resources.files("anglerfish.config").joinpath("adaptors.yaml")
-assert isinstance(p, os.PathLike)
-with open(p) as stream:
-    adaptors = yaml.safe_load(stream)
 delim = "-NNN-"
+adaptors = load_adaptors(raw=True)
 
 
 @dataclass
