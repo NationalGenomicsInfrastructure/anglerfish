@@ -1,3 +1,9 @@
+import importlib
+import os
+
+import yaml
+
+
 class Adaptor:
     def __init__(self, adaptors, delim, adaptor, i7_index=None, i5_index=None):
         self.i7 = AdaptorPart(adaptors[adaptor]["i7"], adaptor, delim, i7_index)
@@ -41,3 +47,23 @@ class AdaptorPart:
                 return self.sequence.replace(self.delim, "N" * len(self.index))
         else:
             return self.sequence
+
+
+# Fetch all adaptors
+def load_adaptors(raw=False):
+    p = importlib.resources.files("anglerfish.config").joinpath("adaptors.yaml")
+    assert isinstance(p, os.PathLike)
+
+    adaptors_raw = []
+    with open(p) as f:
+        adaptors_raw = yaml.safe_load(f)
+
+    if raw:
+        return adaptors_raw
+    adaptors = []
+    for adaptor in adaptors_raw:
+        adaptors.append(
+            Adaptor(adaptors_raw, "-NNN-", adaptor, i7_index=None, i5_index=None)
+        )
+
+    return adaptors
