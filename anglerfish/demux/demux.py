@@ -167,7 +167,7 @@ def cluster_matches(
             except AttributeError:
                 d1 = 0  # presumably it's single index, so no i5
 
-            i7_seq = adaptor.i7_index
+            i7_seq = adaptor.i7.index
             if i7_reversed and i7_seq is not None:
                 i7_seq = str(Seq(i7_seq).reverse_complement())
             fi7, d2 = parse_cs(i7["cs"], i7_seq, max_distance)
@@ -186,14 +186,14 @@ def cluster_matches(
         if dists[index_min] > max_distance:
             log.debug(f" No match {fi7}-{fi5}")
             # Find only full length i7(+i5) adaptor combos. Basically a list of "known unknowns"
-            if len(fi7) + len(fi5) == len(adaptor.i7_index or "") + len(
-                adaptor.i5_index or ""
+            if len(fi7) + len(fi5) == len(adaptor.i7.index or "") + len(
+                adaptor.i5.index or ""
             ):
                 fi75 = "+".join([i for i in [fi7, fi5] if not i == ""])
                 unmatched_bed.append([read, start_insert, end_insert, fi75, "999", "."])
             continue
         matched[read] = alignments
-        log.debug(f" Matched {read} to {adaptor.i7_index}-{adaptor.i5_index}")
+        log.debug(f" Matched {read} to {adaptor.i7.index}-{adaptor.i5.index}")
         matched_bed.append(
             [read, start_insert, end_insert, sample_adaptor[index_min][0], "999", "."]
         )

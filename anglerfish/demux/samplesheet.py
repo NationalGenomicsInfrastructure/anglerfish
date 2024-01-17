@@ -9,6 +9,8 @@ from itertools import combinations
 import Levenshtein as lev
 import yaml
 
+from anglerfish.demux.adaptor import Adaptor
+
 p = importlib.resources.files("anglerfish.config").joinpath("adaptors.yaml")
 assert isinstance(p, os.PathLike)
 with open(p) as stream:
@@ -22,32 +24,6 @@ class SampleSheetEntry:
     adaptor: object
     fastq: str
     ont_barcode: str
-
-
-class Adaptor:
-    def __init__(self, adaptor, i7_index=None, i5_index=None):
-        self.i5 = adaptors[adaptor]["i5"]
-        self.i7 = adaptors[adaptor]["i7"]
-        self.i5_index = i5_index
-        self.i7_index = i7_index
-        self.name = f"{adaptor}_len{len(i7_index)}"
-
-        if delim in self.i5 and i5_index is None:
-            raise UserWarning("Adaptor has i5 but no sequence was specified")
-        if delim in self.i7 and i7_index is None:
-            raise UserWarning("Adaptor has i7 but no sequence was specified")
-
-    def get_i5_mask(self):
-        if delim in self.i5:
-            return self.i5.replace(delim, "N" * len(self.i5_index))
-        else:
-            return self.i5
-
-    def get_i7_mask(self):
-        if delim in self.i7:
-            return self.i7.replace(delim, "N" * len(self.i7_index))
-        else:
-            return self.i7
 
 
 class SampleSheet:
@@ -83,7 +59,7 @@ class SampleSheet:
                 sample_name = row["sample_name"]
                 test_globs[row["fastq_path"]] = glob.glob(row["fastq_path"])
 
-                bc_re = re.compile("\/(barcode\d\d|unclassified)\/")
+                bc_re = re.compile(r"\/(barcode\d\d|unclassified)\/")
                 ont_barcode = None
                 if ont_bc:
                     ob = re.findall(bc_re, row["fastq_path"])
@@ -94,7 +70,7 @@ class SampleSheet:
 
                 ss_entry = SampleSheetEntry(
                     sample_name,
-                    Adaptor(row["adaptors"], i7, i5),
+                    Adaptor(adaptors, delim, row["adaptors"], i7, i5),
                     row["fastq_path"],
                     ont_barcode,
                 )
@@ -135,10 +111,10 @@ class SampleSheet:
         for ont_barcode, adaptors in ss_by_bc.items():
             testset[ont_barcode] = []
             for adaptor in adaptors:
-                if adaptor.i5_index is not None:
-                    testset[ont_barcode].append(adaptor.i5_index + adaptor.i7_index)
+                if adaptor.i5.has_index():
+                    testset[ont_barcode].append(adaptor.i5.index + adaptor.i7.index)
                 else:
-                    testset[ont_barcode].append(adaptor.i7_index)
+                    testset[ont_barcode].append(adaptor.i7.index)
 
         fq_distances = []
         for ont_barcode, adaptors in testset.items():
@@ -148,7 +124,9 @@ class SampleSheet:
             else:
                 for a, b in [i for i in combinations(adaptors, 2)]:
                     dist = lev.distance(a, b)
-                    assert dist > 0, f"""There is one or more identical barcodes in the input samplesheet.
+                    assert (
+                        dist > 0
+                    ), f"""There is one or more identical barcodes in the input samplesheet.
                         First one found: {a}. If these exist in different ONT barcodes, please specify the --ont_barcodes flag."""
                     distances.append(dist)
             fq_distances.append(min(distances))
