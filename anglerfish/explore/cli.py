@@ -5,9 +5,14 @@ from anglerfish.explore.explore import run_explore
 
 @click.command()
 @click.option("-f", "--fastq", required=True, help="Fastq file to align")
-@click.option("-a", "--adaptors_file", required=True, help="YAML file with adaptors")
 @click.option("-o", "--outdir", required=True, help="Output directory")
-@click.option("-t", "--threads", default=1, type=int, help="Number of threads")
+@click.option(
+    "-t",
+    "--threads",
+    default=1,
+    type=int,
+    help="Number of threads specified by minimap2",
+)
 @click.option(
     "-n", "--no_overwrite", is_flag=True, help="Do not overwrite existing alignments"
 )
@@ -62,7 +67,6 @@ from anglerfish.explore.explore import run_explore
 )
 def main(
     fastq,
-    adaptors_file,
     outdir,
     threads,
     no_overwrite,
@@ -76,7 +80,6 @@ def main(
 ):
     run_explore(
         fastq,
-        adaptors_file,
         outdir,
         threads,
         no_overwrite,
