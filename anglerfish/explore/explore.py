@@ -6,6 +6,7 @@ import pandas as pd
 
 from anglerfish.demux.adaptor import load_adaptors
 from anglerfish.demux.demux import parse_paf_lines, run_minimap2
+from anglerfish.explore.entropy import calculate_relative_entropy
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("explore")
@@ -170,7 +171,12 @@ def run_explore(
                 median_insert_length = df_good_hits["insert_len"].median()
                 if median_insert_length > umi_threshold:
                     # Calculate entropies here
-                    pass
+                    entropies = calculate_relative_entropy(
+                        df_good_hits, kmer_length, median_insert_length
+                    )
+                    log.info(
+                        f"{adaptor.name}:{adaptor_end_name} had entropy {entropies}"
+                    )
                 insert_lengths = df_good_hits["insert_len"].value_counts()
                 log.info(
                     f"{adaptor.name}:{adaptor_end_name} had {len(df_good_hits)} good hits with median insert length {median_insert_length}"
