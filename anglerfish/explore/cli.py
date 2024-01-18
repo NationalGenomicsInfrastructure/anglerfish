@@ -9,7 +9,7 @@ from anglerfish.explore.explore import run_explore
 @click.option(
     "-t",
     "--threads",
-    default=1,
+    default=4,
     type=int,
     help="Number of threads specified by minimap2",
 )
