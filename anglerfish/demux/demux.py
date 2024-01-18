@@ -53,10 +53,12 @@ def run_minimap2(fastq_in, indexfile, output_paf, threads, minimap_b=4):
         subprocess.run("sort", stdin=p1.stdout, stdout=ofile, check=True)
 
 
-def parse_paf_lines(paf, min_qual=10):
+def parse_paf_lines(paf, min_qual=10, complex_identifier=False):
     """
     Read and parse one paf alignment lines.
     Returns a dict with the import values for later use
+    If complex_identifier is True (default False), the keys will be on the form
+    "{read}_{i5_or_i7}_{strand_str}"
     """
     entries = {}
     with open(paf) as paf:
@@ -65,17 +67,28 @@ def parse_paf_lines(paf, min_qual=10):
             try:
                 # TODO: objectify this
                 entry = {
+                    "read": aln[0],
                     "adapter": aln[5],
                     "rlen": int(aln[1]),  # read length
                     "rstart": int(aln[2]),  # start alignment on read
                     "rend": int(aln[3]),  # end alignment on read
                     "strand": aln[4],
+                    "cg": aln[-2],  # cigar string
                     "cs": aln[-1],  # cs string
                     "q": int(aln[11]),  # Q score
                     "iseq": None,
                     "sample": None,
                 }
-                read = aln[0]
+                read = entry["read"]
+                if complex_identifier:
+                    i5_or_i7 = entry["adapter"].split("_")[-1]
+                    if entry["strand"] == "+":
+                        strand_str = "positive"
+                    else:
+                        strand_str = "negative"
+                    ix = f"{read}_{i5_or_i7}_{strand_str}"
+                else:
+                    ix = read
             except IndexError:
                 log.debug(f"Could not find all paf columns: {read}")
                 continue
@@ -84,10 +97,10 @@ def parse_paf_lines(paf, min_qual=10):
                 log.debug(f"Low quality alignment: {read}")
                 continue
 
-            if read in entries.keys():
-                entries[read].append(entry)
+            if ix in entries.keys():
+                entries[ix].append(entry)
             else:
-                entries[read] = [entry]
+                entries[ix] = [entry]
 
     return entries
 
