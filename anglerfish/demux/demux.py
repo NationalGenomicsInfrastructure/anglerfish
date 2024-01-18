@@ -24,7 +24,7 @@ def parse_cs(cs_string, index, max_distance):
     return nts, lev.distance(index.lower(), nts)
 
 
-def run_minimap2(fastq_in, indexfile, output_paf, threads):
+def run_minimap2(fastq_in, indexfile, output_paf, threads, minimap_b=4):
     """
     Runs Minimap2
     """
@@ -36,9 +36,10 @@ def run_minimap2(fastq_in, indexfile, output_paf, threads):
         "10",
         "-w",
         "5",
-        "-B1",
-        "-A6",
-        "--dual=no",
+        "-A",
+        "6",
+        "-B",
+        str(minimap_b),
         "-c",
         "-t",
         str(threads),
@@ -46,8 +47,10 @@ def run_minimap2(fastq_in, indexfile, output_paf, threads):
         fastq_in,
     ]
 
-    with open(output_paf, "ab") as ofile:
-        subprocess.run(cmd, stdout=ofile, check=True)
+    run_log = f"{output_paf}.log"
+    with open(output_paf, "ab") as ofile, open(run_log, "ab") as log_file:
+        p1 = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=log_file)
+        subprocess.run("sort", stdin=p1.stdout, stdout=ofile, check=True)
 
 
 def parse_paf_lines(paf, min_qual=10):
