@@ -3,7 +3,6 @@ from collections import deque
 
 import numpy as np
 
-
 # Rolling window implementation
 def _window(seq, n=3):
     win = deque(maxlen=n)
@@ -14,12 +13,13 @@ def _window(seq, n=3):
 
 
 def _entropy(pk, qk):
-    """Taken from https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.entropy.html
-
-    Felt unecessary to add scipy as dependency just for this function.
     """
-    # TODO: Catch potential exceptions here for weird input values.
-    return -np.sum(pk * np.log(qk))
+    Kullback-Leibler divergence (relative entropy) 
+    Reference https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.entropy.html
+    """
+    if np.sum(pk) - 1 > 1e-5:
+        pk = pk / np.sum(pk)
+    return np.sum(pk * np.log(pk/qk))
 
 
 # Each sequence gives matrix of position and k-mer occurence.
@@ -41,7 +41,6 @@ def _count_for_seqs(seqs, kmer_positions, insert_length, k=2):
     sum_a = np.sum(stacked, axis=0)
     even_dist = np.ones(4**k) / (4**k)
     entropies = [_entropy(a, even_dist) for a in sum_a.T]
-
     return entropies
 
 
