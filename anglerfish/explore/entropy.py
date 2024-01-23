@@ -3,6 +3,7 @@ from collections import deque
 
 import numpy as np
 
+
 # Rolling window implementation
 def _window(seq, n=3):
     win = deque(maxlen=n)
@@ -14,12 +15,12 @@ def _window(seq, n=3):
 
 def _entropy(pk, qk):
     """
-    Kullback-Leibler divergence (relative entropy) 
+    Kullback-Leibler divergence (relative entropy)
     Reference https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.entropy.html
     """
     if np.sum(pk) - 1 > 1e-5:
         pk = pk / np.sum(pk)
-    return np.sum(pk * np.log(pk/qk))
+    return np.sum(pk * np.log(pk / qk))
 
 
 # Each sequence gives matrix of position and k-mer occurence.
