@@ -233,8 +233,11 @@ def cluster_matches(
 
 def write_demuxedfastq(beds, fastq_in, fastq_out):
     """
+    Intended for multiprocessing
     Take a set of coordinates in bed format [[seq1, start, end, ..][seq2, ..]]
     from over a set of fastq entries in the input files and do extraction.
+
+    Return: PID of the process
     """
     gz_buf = 131072
     fq_files = glob.glob(fastq_in)
@@ -263,4 +266,5 @@ def write_demuxedfastq(beds, fastq_in, fastq_out):
                             outfqs += "+\n"
                             outfqs += f"{qual[bed[1] : bed[2]]}\n"
                         oz.stdin.write(outfqs.encode("utf-8"))
-        log.debug(f" Wrote {fastq_out}, size: {os.path.getsize(fastq_out)} bytes")
+
+    return os.getpid()

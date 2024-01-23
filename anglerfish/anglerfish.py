@@ -3,6 +3,7 @@ import argparse
 import glob
 import gzip
 import logging
+import multiprocessing
 import os
 import uuid
 from collections import Counter
@@ -27,6 +28,8 @@ log = logging.getLogger("anglerfish")
 
 
 def run_demux(args):
+    multiprocessing.set_start_method("spawn")
+
     if args.debug:
         log.setLevel(logging.DEBUG)
     run_uuid = str(uuid.uuid4())
@@ -151,6 +154,7 @@ def run_demux(args):
                 adaptors_sorted[key], fragments, args.max_distance
             )
 
+        out_pool = []
         for k, v in groupby(sorted(matches, key=lambda x: x[3]), key=lambda y: y[3]):
             # To avoid collisions in fastq filenames, we add the ONT barcode to the sample name
             fq_prefix = k
@@ -179,7 +183,21 @@ def run_demux(args):
             )
             report.add_sample_stat(sample_stat)
             if not args.skip_demux:
-                write_demuxedfastq(sample_dict, fastq_path, fq_name)
+                out_pool.append((sample_dict, fastq_path, fq_name))
+
+        # Write demuxed fastq files
+        pool = multiprocessing.Pool(processes=args.threads)
+        results = []
+        for out in out_pool:
+            log.debug(f" Writing {out[2]}")
+            spawn = pool.starmap_async(write_demuxedfastq, [out])
+            results.append((spawn, out[2]))
+        pool.close()
+        pool.join()
+        for result in results:
+            log.debug(
+                f" PID-{result[0].get()}: wrote {result[1]}, size {os.path.getsize(result[1])} bytes"
+            )
 
         # Top unmatched indexes
         nomatch_count = Counter([x[3] for x in no_matches])
@@ -224,7 +242,11 @@ def anglerfish():
         help="Analysis output folder (default: Current dir)",
     )
     parser.add_argument(
-        "--threads", "-t", default=4, help="Number of threads to use (default: 4)"
+        "--threads",
+        "-t",
+        default=4,
+        type=int,
+        help="Number of threads to use (default: 4)",
     )
     parser.add_argument(
         "--skip_demux",
