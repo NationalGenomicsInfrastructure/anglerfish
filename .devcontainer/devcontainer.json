@@ -6,8 +6,11 @@
     // Sets the run context to one level up instead of the .devcontainer folder.
     "context": "..",
     // Update the 'dockerFile' property if you aren't using the standard 'Dockerfile' filename.
-    "dockerfile": "dev.Dockerfile",
+    "dockerfile": "../Dockerfile",
+    // Use devcontainer target
+    "target": "devcontainer",
   },
+  "initializeCommand": "echo 'Workaround, see github https://github.com/microsoft/vscode-remote-release/issues/9302#issuecomment-1854476541'",
   "features": {},
   "customizations": {
     "vscode": {
@@ -15,13 +18,14 @@
         "esbenp.prettier-vscode",
         "wholroyd.jinja",
         "ms-python.python",
-        "charliermarsh.ruff@v2024.2.0",
+        "charliermarsh.ruff@2024.2.0",
+        "ms-azuretools.vscode-docker",
       ],
     },
   },
   // Use 'forwardPorts' to make a list of ports inside the container available locally.
   // "forwardPorts": [],
-  "postCreateCommand": "pip3 install -e .",
+  // "postCreateCommand": "pip3 install -e .",
   // Configure tool-specific properties.
   // "customizations": {},
   // Uncomment to connect as an existing user other than the container default. More info: https://aka.ms/dev-containers-non-root.
