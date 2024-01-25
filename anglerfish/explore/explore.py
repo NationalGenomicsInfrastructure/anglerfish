@@ -181,6 +181,8 @@ def run_explore(
                 log.info(
                     f"{adaptor.name}:{adaptor_end_name} had {len(df_good_hits)} good hits with median insert length {median_insert_length}"
                 )
+                histogram_file = os.path.join(outdir, f"{adaptor_end.name}.hist.csv")
+                insert_lengths[sorted(insert_lengths.index)].to_csv(histogram_file)
                 log.info(insert_lengths[sorted(insert_lengths.index)])
             else:
                 median_insert_length = None
