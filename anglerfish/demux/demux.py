@@ -176,7 +176,7 @@ def cluster_matches(
         fi7 = ""
         for _, adaptor, _ in sample_adaptor:
             try:
-                i5_seq = adaptor.i5_index
+                i5_seq = adaptor.i5.index
                 if i5_reversed and i5_seq is not None:
                     i5_seq = str(Seq(i5_seq).reverse_complement())
                 fi5, d1 = parse_cs(i5["cs"], i5_seq, max_distance)
