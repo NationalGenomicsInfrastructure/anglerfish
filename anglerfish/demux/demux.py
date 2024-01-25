@@ -12,13 +12,16 @@ from Bio.SeqIO.QualityIO import FastqGeneralIterator
 log = logging.getLogger("anglerfish")
 
 
-def parse_cs(cs_string, index, max_distance):
+def parse_cs(cs_string, index, umi_before=0, umi_after=0):
     """
     Parses the CS string of a paf alignment and matches it to the given index using a max Levenshtein distance
-    TODO / idea: Do something big-brained with ONT squigglies
     """
     nt = re.compile("\*n([atcg])")
     nts = "".join(re.findall(nt, cs_string))
+    if umi_before > 0:
+        nts = nts[umi_before:]
+    if umi_after > 0:
+        nts = nts[:-umi_after]
 
     # Allow for mismatches
     return nts, lev.distance(index.lower(), nts)
@@ -169,14 +172,24 @@ def cluster_matches(
                 i5_seq = adaptor.i5_index
                 if i5_reversed and i5_seq is not None:
                     i5_seq = str(Seq(i5_seq).reverse_complement())
-                fi5, d1 = parse_cs(i5["cs"], i5_seq, max_distance)
+                fi5, d1 = parse_cs(
+                    i5["cs"],
+                    i5_seq,
+                    umi_before=adaptor.i5_umi_before,
+                    umi_after=adaptor.i5_umi_after,
+                )
             except AttributeError:
                 d1 = 0  # presumably it's single index, so no i5
 
             i7_seq = adaptor.i7_index
             if i7_reversed and i7_seq is not None:
                 i7_seq = str(Seq(i7_seq).reverse_complement())
-            fi7, d2 = parse_cs(i7["cs"], i7_seq, max_distance)
+            fi7, d2 = parse_cs(
+                i7["cs"],
+                i7_seq,
+                umi_before=adaptor.i7_umi_before,
+                umi_after=adaptor.i7_umi_after,
+            )
             dists.append(d1 + d2)
 
         index_min = min(range(len(dists)), key=dists.__getitem__)

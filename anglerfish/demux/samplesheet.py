@@ -13,7 +13,10 @@ p = importlib.resources.files("anglerfish.config").joinpath("adaptors.yaml")
 assert isinstance(p, os.PathLike)
 with open(p) as stream:
     adaptors = yaml.safe_load(stream)
-delim = "-NNN-"
+
+idelim = re.compile(r"\<N\>")
+udelim = re.compile(r"(\<U\d+\>)")
+ulen = re.compile(r"\<U\(d+\)>")
 
 
 @dataclass
@@ -30,22 +33,58 @@ class Adaptor:
         self.i7 = adaptors[adaptor]["i7"]
         self.i5_index = i5_index
         self.i7_index = i7_index
+        self.i5_umi = re.findall(udelim, self.i5)
+        self.i5_umi_before = 0
+        self.i5_umi_after = 0
+        self.i7_umi = re.findall(udelim, self.i7)
+        self.i7_umi_before = 0
+        self.i7_umi_after = 0
         self.name = f"{adaptor}_len{len(i7_index)}"
 
-        if delim in self.i5 and i5_index is None:
+        if len(self.i5_umi) > 1 or len(self.i7_umi) > 1:
+            raise UserWarning(
+                f"Adaptor {adaptor} has more than one UMI in either i5 or i7. This is not supported."
+            )
+        # Check if UMI is before or after i5 index
+        if len(self.i5_umi) > 0 and ">" + self.i5_umi[0] in self.i5:
+            self.i5_umi_before = int(re.search(ulen, self.i5_umi[0]).group(1))
+        elif len(self.i5_umi) > 0 and self.i5_umi[0] + "<" in self.i5:
+            self.i5_umi_after = int(re.search(ulen, self.i5_umi[0]).group(1))
+        elif len(self.i5_umi) > 0:
+            raise UserWarning(
+                f"Adaptor {adaptor} has UMI but it does not flank an index. This is not supported."
+            )
+        # Check if UMI is before or after i7 index
+        if len(self.i7_umi) > 0 and ">" + self.i7_umi[0] in self.i7:
+            self.i7_umi_before = int(re.search(ulen, self.i7_umi[0]).group(1))
+        elif len(self.i7_umi) > 0 and self.i7_umi[0] + "<" in self.i7:
+            self.i7_umi_after = int(re.search(ulen, self.i7_umi[0]).group(1))
+        elif len(self.i7_umi) > 0:
+            raise UserWarning(
+                f"Adaptor {adaptor} has UMI but it does not flank an index. This is not supported."
+            )
+        if re.search(idelim, self.i5) is not None and i5_index is None:
             raise UserWarning("Adaptor has i5 but no sequence was specified")
-        if delim in self.i7 and i7_index is None:
+        if re.search(idelim, self.i7) is not None and i7_index is None:
             raise UserWarning("Adaptor has i7 but no sequence was specified")
 
     def get_i5_mask(self):
-        if delim in self.i5:
-            return self.i5.replace(delim, "N" * len(self.i5_index))
+        if self.i5_index is not None:
+            new_i5 = re.sub(idelim, "N" * len(self.i5_index), self.i5)
+            new_i5 = re.sub(
+                udelim, "N" * max(self.i5_umi_after, self.i5_umi_before), new_i5
+            )
+            return new_i5
         else:
             return self.i5
 
     def get_i7_mask(self):
-        if delim in self.i7:
-            return self.i7.replace(delim, "N" * len(self.i7_index))
+        if self.i7_index is not None:
+            new_i7 = re.sub(idelim, "N" * len(self.i7_index), self.i7)
+            new_i7 = re.sub(
+                udelim, "N" * max(self.i7_umi_after, self.i7_umi_before), new_i7
+            )
+            return new_i7
         else:
             return self.i7
 
