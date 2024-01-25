@@ -1,7 +1,10 @@
 import json
+import logging
 import os
 from dataclasses import asdict, dataclass
 from typing import ClassVar
+
+log = logging.getLogger("anglerfish")
 
 
 class Report:
@@ -43,6 +46,9 @@ class Report:
             for key, unmatch in self.unmatched_stats.items():
                 for idx, mnum in unmatch:
                     f.write(f"{idx}\t{mnum}\t{key[0]}\n")
+        log.debug(
+            f"Wrote anglerfish_stats.txt to {outdir}, size: {os.path.getsize(os.path.join(outdir, 'anglerfish_stats.txt'))} bytes"
+        )
 
     def write_json(self, outdir):
         json_out = {
@@ -75,6 +81,9 @@ class Report:
                 )
         with open(os.path.join(outdir, "anglerfish_stats.json"), "w") as f:
             f.write(json.dumps(json_out, indent=2, sort_keys=True))
+            log.debug(
+                f"Wrote anglerfish_stats.json to {outdir}, size: {os.path.getsize(os.path.join(outdir, 'anglerfish_stats.json'))} bytes"
+            )
 
     def write_dataframe(self, outdir, samplesheet):
         """Write a dataframe of the stats to a csv file.
@@ -110,6 +119,9 @@ class Report:
             for out in out_list:
                 f.write(",".join([str(out[i]) for i in out_header]))
                 f.write("\n")
+        log.debug(
+            f"Wrote anglerfish_dataframe.csv to {outdir}, size: {os.path.getsize(os.path.join(outdir, 'anglerfish_dataframe.csv'))} bytes"
+        )
 
 
 class AlignmentStat:

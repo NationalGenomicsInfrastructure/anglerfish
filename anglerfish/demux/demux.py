@@ -1,6 +1,7 @@
 import glob
 import io
 import logging
+import os
 import re
 import subprocess
 
@@ -8,8 +9,7 @@ import Levenshtein as lev
 from Bio.Seq import Seq
 from Bio.SeqIO.QualityIO import FastqGeneralIterator
 
-logging.basicConfig(level=logging.INFO)
-log = logging.getLogger("demux")
+log = logging.getLogger("anglerfish")
 
 
 def parse_cs(cs_string, index, max_distance):
@@ -112,7 +112,7 @@ def layout_matches(i5_name, i7_name, paf_entries):
         - fragments. Reads with one I7 and one I5
         - singletons. Reads with that only match either I5 or I7 adaptors
         - concats. Concatenated fragments. Fragments with several alternating I7, I5 matches
-        - unknowns. Any other reads
+        - unknowns. Any other reads, but usually i5-i5 or i7-i7 matches
     """
 
     fragments = {}
@@ -139,8 +139,14 @@ def layout_matches(i5_name, i7_name, paf_entries):
             fragments[read] = sorted(sorted_entries, key=lambda l: l["rstart"])
         elif len(sorted_entries) > 2:
             concats[read] = sorted(sorted_entries, key=lambda l: l["rstart"])
+            log.debug(
+                f"Concatenated fragment: {read}, found: {[(i['adapter'],i['rstart']) for i in sorted_entries]}"
+            )
         else:
             unknowns[read] = entry_list
+            log.debug(
+                f"Unknown fragment: {read}, found: {[(i['adapter'],i['rstart']) for i in entry_list]}"
+            )
         # TODO: add minimum insert size
     return (fragments, singletons, concats, unknowns)
 
@@ -168,7 +174,7 @@ def cluster_matches(
             i5 = alignments[1]
             i7 = alignments[0]
         else:
-            log.debug(" Read has no valid illumina fragment")
+            log.debug(" {read} has no valid illumina fragment")
             continue
 
         dists = []
@@ -192,15 +198,12 @@ def cluster_matches(
         index_min = min(range(len(dists)), key=dists.__getitem__)
         # Test if two samples in the sheet is equidistant to the i5/i7
         if len([i for i, j in enumerate(dists) if j == dists[index_min]]) > 1:
-            log.debug(" Ambiguous alignment, skipping")
             continue
         start_insert = min(i5["rend"], i7["rend"])
         end_insert = max(i7["rstart"], i5["rstart"])
         if end_insert - start_insert < 10:
-            log.debug(" Erroneous / overlapping adaptor matches")
             continue
         if dists[index_min] > max_distance:
-            log.debug(f" No match {fi7}-{fi5}")
             # Find only full length i7(+i5) adaptor combos. Basically a list of "known unknowns"
             if len(fi7) + len(fi5) == len(adaptor.i7.index or "") + len(
                 adaptor.i5.index or ""
@@ -209,10 +212,10 @@ def cluster_matches(
                 unmatched_bed.append([read, start_insert, end_insert, fi75, "999", "."])
             continue
         matched[read] = alignments
-        log.debug(f" Matched {read} to {adaptor.i7.index}-{adaptor.i5.index}")
         matched_bed.append(
             [read, start_insert, end_insert, sample_adaptor[index_min][0], "999", "."]
         )
+    log.debug(f" Matched {len(matched)} reads, unmatched {len(unmatched_bed)} reads")
     return unmatched_bed, matched_bed
 
 
@@ -220,7 +223,6 @@ def write_demuxedfastq(beds, fastq_in, fastq_out):
     """
     Take a set of coordinates in bed format [[seq1, start, end, ..][seq2, ..]]
     from over a set of fastq entries in the input files and do extraction.
-    TODO: Can be optimized using pigz or rewritten using python threading
     """
     gz_buf = 131072
     fq_files = glob.glob(fastq_in)
@@ -249,3 +251,4 @@ def write_demuxedfastq(beds, fastq_in, fastq_out):
                             outfqs += "+\n"
                             outfqs += f"{qual[bed[1] : bed[2]]}\n"
                         oz.stdin.write(outfqs.encode("utf-8"))
+        log.debug(f" Wrote {fastq_out}, size: {os.path.getsize(fastq_out)} bytes")

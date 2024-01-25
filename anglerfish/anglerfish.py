@@ -27,6 +27,8 @@ log = logging.getLogger("anglerfish")
 
 
 def run_demux(args):
+    if args.debug:
+        log.setLevel(logging.DEBUG)
     run_uuid = str(uuid.uuid4())
     os.mkdir(args.out_fastq)
     ss = SampleSheet(args.samplesheet, args.ont_barcodes)
