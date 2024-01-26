@@ -33,17 +33,42 @@ conda install -c bioconda anglerfish
 pip install --upgrade --force-reinstall git+https://github.com/remiolsen/anglerfish.git
 ```
 
+### For Arm64 processors (e.g. Apple M2)
+
+Anglerfish depends on minimap2 which needs to be [compiled from source](https://github.com/lh3/minimap2?tab=readme-ov-file#installation) for Arm64 processors.
+When minimap2 is compiled and available on $PATH, anglerfish can be installed with pip:
+
+```shell
+pip install bio-anglerfish
+```
+
+The Dockerfile supplied here includes a
+
 ## Source development
 
 1. [Install miniconda](https://docs.conda.io/en/latest/miniconda.html).
 
 2. Set up repo clone with editable install
 
+For x86 processors (e.g. Intle/AMD):
+
 ```
 git clone https://github.com/remiolsen/anglerfish.git
 cd anglerfish
 # Create a the anglerfish conda environment
 conda env create -f environment.yml
+# Install anglerfish
+conda activate anglerfish-dev
+pip install -e ".[dev]"
+```
+
+For Arm64 processors (e.g. Apple M1/M2). First [compile and install minimap2 manually](https://github.com/lh3/minimap2?tab=readme-ov-file#installation), then:
+
+```
+git clone https://github.com/remiolsen/anglerfish.git
+cd anglerfish
+# Create a the anglerfish conda environment (but remove minimap2)
+conda env create -f <(grep -v minimap2 environment.yml)
 # Install anglerfish
 conda activate anglerfish-dev
 pip install -e ".[dev]"
