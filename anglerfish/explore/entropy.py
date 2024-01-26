@@ -18,6 +18,9 @@ def _entropy(pk, qk):
     Kullback-Leibler divergence (relative entropy)
     Reference https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.entropy.html
     """
+    # To avoid zeroes in pk, add a tiny fraction of observed values
+    pk = pk + 1e-2
+
     if np.sum(pk) - 1 > 1e-5:
         pk = pk / np.sum(pk)
     return np.sum(pk * np.log(pk / qk))
