@@ -16,7 +16,7 @@ def run_explore(
     fastq,
     outdir,
     threads,
-    no_overwrite,
+    use_existing,
     good_hit_threshold,
     insert_thres_low,
     insert_thres_high,
@@ -31,9 +31,9 @@ def run_explore(
         os.mkdir(outdir)
     except FileExistsError:
         log.info(f"Output directory {outdir} already exists")
-        if not no_overwrite:
+        if not use_existing:
             log.error(
-                f"Output directory {outdir} already exists, please use --no_overwrite to continue"
+                f"Output directory {outdir} already exists, please use --use_existing to continue"
             )
             exit(1)
         else:
@@ -52,7 +52,7 @@ def run_explore(
         # Align
         aln_path = os.path.join(outdir, f"{adaptor_name}.paf")
         alignments.append((adaptor, aln_path))
-        if os.path.exists(aln_path) and no_overwrite:
+        if os.path.exists(aln_path) and use_existing:
             log.info(f"Skipping {adaptor_name} as alignment already exists")
             continue
         adaptor_path = os.path.join(outdir, f"{adaptor_name}.fasta")
