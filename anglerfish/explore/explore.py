@@ -177,7 +177,7 @@ def run_explore(
                     entropy_file = os.path.join(
                         outdir, f"{adaptor.name}_{adaptor_end_name}.entropy.csv"
                     )
-                    pd.Series(entropies).to_csv(entropy_file)
+                    pd.Series(entropies).to_csv(entropy_file, float_format="%.2f")
                     log.info(
                         f"{adaptor.name}:{adaptor_end_name}, relative entropy for k={kmer_length}, over the index saved to {entropy_file}"
                     )
