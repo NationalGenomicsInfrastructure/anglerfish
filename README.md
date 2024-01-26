@@ -171,6 +171,16 @@ In folder `anglerfish_????_??_??_?????/`
 - `anglerfish_stats.txt` Barcode statistics from anglerfish run
 - `anglerfish_stats.json` Machine readable anglerfish statistics
 
+## Anglerfish Explore (Experimental)
+
+`anglerfish explore` is a command that aims to explore a sequencing pool without a given samplesheet and give hints on what adapter types are present, which index lenghts are used and whether there are any UMIs within the index sequence. The Anglerfish explore command is still under heavy development but can be triggered by running:
+
+```shell
+python anglerfish/explore/cli.py
+```
+
+inside the anglerfish directory.
+
 ## Credits
 
 The Anglerfish code was written by [@remiolsen](https://github.com/remiolsen) but it would not exist without the contributions of [@FranBonath](https://github.com/FranBonath), [@taborsak](https://github.com/taborsak), [@ssjunnebo](https://github.com/ssjunnebo) and Carl Rubin.
