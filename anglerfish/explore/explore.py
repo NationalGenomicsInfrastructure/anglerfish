@@ -175,7 +175,7 @@ def run_explore(
                         df_good_hits, kmer_length, median_insert_length
                     )
                     entropy_file = os.path.join(
-                        outdir, f"{adaptor_end.name}.entropy.csv"
+                        outdir, f"{adaptor.name}_{adaptor_end.name}.entropy.csv"
                     )
                     pd.Series(entropies).to_csv(entropy_file)
                     log.info(
@@ -185,7 +185,9 @@ def run_explore(
                 log.info(
                     f"{adaptor.name}:{adaptor_end_name} had {len(df_good_hits)} good hits with median insert length {median_insert_length}"
                 )
-                histogram_file = os.path.join(outdir, f"{adaptor_end.name}.hist.csv")
+                histogram_file = os.path.join(
+                    outdir, f"{adaptor.name}_{adaptor_end.name}.hist.csv"
+                )
                 insert_lengths[sorted(insert_lengths.index)].to_csv(histogram_file)
                 log.info(
                     f"{adaptor.name}:{adaptor_end_name} insert length histogram saved {histogram_file}"
