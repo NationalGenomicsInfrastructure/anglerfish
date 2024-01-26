@@ -39,7 +39,7 @@ WORKDIR /usr/src/anglerfish
 
 # Activate the environment
 ARG MAMBA_DOCKERFILE_ACTIVATE=1
-RUN micromamba install -y -f /environment.tmp.yml && micromamba clean --all --yes
+RUN micromamba install -y -n base -f /environment.tmp.yml && micromamba clean --all --yes
 
 #####
 # Devcontainer
@@ -49,12 +49,11 @@ FROM base as devcontainer
 # Useful tools for devcontainer
 RUN apt-get update;\
     apt-get install -y git vim
-
 RUN eval "$(micromamba shell hook --shell bash)" && python -m pip install -e .[dev]
 
 #####
 # Main
 #####
 FROM base as main
-RUN eval "$(micromamba shell hook --shell bash)" && python -m pip install .[dev]
 USER $MAMBA_USER
+RUN eval "$(micromamba shell hook --shell bash)" && python -m pip install .[dev]
