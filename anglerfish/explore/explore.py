@@ -174,8 +174,12 @@ def run_explore(
                     entropies = calculate_relative_entropy(
                         df_good_hits, kmer_length, median_insert_length
                     )
+                    entropy_file = os.path.join(
+                        outdir, f"{adaptor_end.name}.entropy.csv"
+                    )
+                    pd.Series(entropies).to_csv(entropy_file)
                     log.info(
-                        f"{adaptor.name}:{adaptor_end_name} had entropy {entropies}"
+                        f"{adaptor.name}:{adaptor_end_name}, relative entropy for k={kmer_length}, over the index saved to {entropy_file}"
                     )
                 insert_lengths = df_good_hits["insert_len"].value_counts()
                 log.info(
@@ -183,7 +187,9 @@ def run_explore(
                 )
                 histogram_file = os.path.join(outdir, f"{adaptor_end.name}.hist.csv")
                 insert_lengths[sorted(insert_lengths.index)].to_csv(histogram_file)
-                log.info(insert_lengths[sorted(insert_lengths.index)])
+                log.info(
+                    f"{adaptor.name}:{adaptor_end_name} insert length histogram saved {histogram_file}"
+                )
             else:
                 median_insert_length = None
                 insert_lengths = None
