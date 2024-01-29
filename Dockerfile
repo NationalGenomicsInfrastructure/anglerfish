@@ -1,4 +1,4 @@
-FROM mambaorg/micromamba
+FROM mambaorg/micromamba as base
 
 LABEL author="Remi-Andre Olsen" \
       description="Anglerfish development version" \
@@ -8,20 +8,13 @@ USER root
 
 # Check for arm64 architecture to install minimap2
 ARG TARGETARCH
+ENV MINIMAP_VERSION=2.26
 RUN if [ "$TARGETARCH" = "arm64" ]; then \
       # Install compliation tools for minimap2
       apt-get update;\
       apt-get install -y curl build-essential libz-dev;\
-    fi
-
-ENV MINIMAP_VERSION=2.26
-
-RUN if [ "$TARGETARCH" = "arm64" ]; then \
       # Download minimap2
       curl -L https://github.com/lh3/minimap2/archive/refs/tags/v${MINIMAP_VERSION}.tar.gz | tar -zxvf - ;\
-    fi
-
-RUN if [ "$TARGETARCH" = "arm64" ]; then \
       # Compile minimap2
       cd minimap2-${MINIMAP_VERSION};\
       make arm_neon=1 aarch64=1; \
@@ -32,6 +25,7 @@ RUN if [ "$TARGETARCH" = "arm64" ]; then \
 COPY --chown=$MAMBA_USER:$MAMBA_USER environment.yml /
 COPY --chown=$MAMBA_USER:$MAMBA_USER requirements.txt /
 
+# Remove minimap2 from environment.yml for arm64
 RUN if [ "$TARGETARCH" = "arm64" ]; then \
       grep -v 'minimap2' /environment.yml > /environment.tmp.yml ;\
     else \
@@ -45,7 +39,21 @@ WORKDIR /usr/src/anglerfish
 
 # Activate the environment
 ARG MAMBA_DOCKERFILE_ACTIVATE=1
-RUN micromamba install -y -f /environment.tmp.yml && micromamba clean --all --yes
+RUN micromamba install -y -n base -f /environment.tmp.yml && micromamba clean --all --yes
 
-RUN eval "$(micromamba shell hook --shell bash)" && python -m pip install .[dev]
+#####
+# Devcontainer
+#####
+FROM base as devcontainer
+
+# Useful tools for devcontainer
+RUN apt-get update;\
+    apt-get install -y git vim
+RUN eval "$(micromamba shell hook --shell bash)" && python -m pip install -e .[dev]
+
+#####
+# Main
+#####
+FROM base as main
 USER $MAMBA_USER
+RUN eval "$(micromamba shell hook --shell bash)" && python -m pip install .[dev]
