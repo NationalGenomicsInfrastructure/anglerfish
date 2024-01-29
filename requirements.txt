@@ -1,0 +1,4 @@
+numpy==1.26.3
+biopython==1.83
+levenshtein==0.23.0
+pyyaml==6.0.1
