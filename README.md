@@ -42,7 +42,7 @@ When minimap2 is compiled and available on $PATH, anglerfish can be installed wi
 pip install bio-anglerfish
 ```
 
-The Dockerfile supplied here includes a
+Additionaly, if Docker is your cup of tea, the Dockerfile supplied in this repository should also work on both arm64 and x86 processors.
 
 ## Source development
 
@@ -50,7 +50,7 @@ The Dockerfile supplied here includes a
 
 2. Set up repo clone with editable install
 
-For x86 processors (e.g. Intle/AMD):
+For x86 processors (e.g. Intel/AMD):
 
 ```
 git clone https://github.com/remiolsen/anglerfish.git
