@@ -19,6 +19,7 @@ jobs:
             python=${{ matrix.python-version }}
             pip
           environment-file: environment.yml
+          environment-name: anglerfish-dev
 
       # Install Anglerfish
       - shell: bash -l {0}
