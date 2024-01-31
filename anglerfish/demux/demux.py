@@ -26,7 +26,7 @@ def parse_cs(cs_string, index, umi_before=0, umi_after=0):
     return nts, lev.distance(index.lower(), nts)
 
 
-def run_minimap2(fastq_in, indexfile, output_paf, threads):
+def run_minimap2(fastq_in, indexfile, output_paf, threads, minimap_b=1):
     """
     Runs Minimap2
     """
@@ -38,9 +38,10 @@ def run_minimap2(fastq_in, indexfile, output_paf, threads):
         "10",
         "-w",
         "5",
-        "-B1",
-        "-A6",
-        "--dual=no",
+        "-A",
+        "6",
+        "-B",
+        str(minimap_b),
         "-c",
         "-t",
         str(threads),
@@ -48,14 +49,18 @@ def run_minimap2(fastq_in, indexfile, output_paf, threads):
         fastq_in,
     ]
 
-    with open(output_paf, "ab") as ofile:
-        subprocess.run(cmd, stdout=ofile, check=True)
+    run_log = f"{output_paf}.log"
+    with open(output_paf, "ab") as ofile, open(run_log, "ab") as log_file:
+        p1 = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=log_file)
+        subprocess.run("sort", stdin=p1.stdout, stdout=ofile, check=True)
 
 
-def parse_paf_lines(paf, min_qual=1):
+def parse_paf_lines(paf, min_qual=1, complex_identifier=False):
     """
     Read and parse one paf alignment lines.
     Returns a dict with the import values for later use
+    If complex_identifier is True (default False), the keys will be on the form
+    "{read}_{i5_or_i7}_{strand_str}"
     """
     entries = {}
     with open(paf) as paf:
@@ -64,17 +69,28 @@ def parse_paf_lines(paf, min_qual=1):
             try:
                 # TODO: objectify this
                 entry = {
+                    "read": aln[0],
                     "adapter": aln[5],
                     "rlen": int(aln[1]),  # read length
                     "rstart": int(aln[2]),  # start alignment on read
                     "rend": int(aln[3]),  # end alignment on read
                     "strand": aln[4],
+                    "cg": aln[-2],  # cigar string
                     "cs": aln[-1],  # cs string
                     "q": int(aln[11]),  # Q score
                     "iseq": None,
                     "sample": None,
                 }
-                read = aln[0]
+                read = entry["read"]
+                if complex_identifier:
+                    i5_or_i7 = entry["adapter"].split("_")[-1]
+                    if entry["strand"] == "+":
+                        strand_str = "positive"
+                    else:
+                        strand_str = "negative"
+                    ix = f"{read}_{i5_or_i7}_{strand_str}"
+                else:
+                    ix = read
             except IndexError:
                 log.debug(f"Could not find all paf columns: {read}")
                 continue
@@ -83,10 +99,10 @@ def parse_paf_lines(paf, min_qual=1):
                 log.debug(f"Low quality alignment: {read}")
                 continue
 
-            if read in entries.keys():
-                entries[read].append(entry)
+            if ix in entries.keys():
+                entries[ix].append(entry)
             else:
-                entries[read] = [entry]
+                entries[ix] = [entry]
 
     return entries
 
@@ -168,7 +184,7 @@ def cluster_matches(
         fi7 = ""
         for _, adaptor, _ in sample_adaptor:
             try:
-                i5_seq = adaptor.i5_index
+                i5_seq = adaptor.i5.index
                 if i5_reversed and i5_seq is not None:
                     i5_seq = str(Seq(i5_seq).reverse_complement())
                 fi5, d1 = parse_cs(
@@ -180,7 +196,7 @@ def cluster_matches(
             except AttributeError:
                 d1 = 0  # presumably it's single index, so no i5
 
-            i7_seq = adaptor.i7_index
+            i7_seq = adaptor.i7.index
             if i7_reversed and i7_seq is not None:
                 i7_seq = str(Seq(i7_seq).reverse_complement())
             fi7, d2 = parse_cs(
@@ -201,8 +217,8 @@ def cluster_matches(
             continue
         if dists[index_min] > max_distance:
             # Find only full length i7(+i5) adaptor combos. Basically a list of "known unknowns"
-            if len(fi7) + len(fi5) == len(adaptor.i7_index or "") + len(
-                adaptor.i5_index or ""
+            if len(fi7) + len(fi5) == len(adaptor.i7.index or "") + len(
+                adaptor.i5.index or ""
             ):
                 fi75 = "+".join([i for i in [fi7, fi5] if not i == ""])
                 unmatched_bed.append([read, start_insert, end_insert, fi75, "999", "."])

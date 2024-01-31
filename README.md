@@ -33,17 +33,42 @@ conda install -c bioconda anglerfish
 pip install --upgrade --force-reinstall git+https://github.com/remiolsen/anglerfish.git
 ```
 
+### For Arm64 processors (e.g. Apple M2)
+
+Anglerfish depends on minimap2 which needs to be [compiled from source](https://github.com/lh3/minimap2?tab=readme-ov-file#installation) for Arm64 processors.
+When minimap2 is compiled and available on $PATH, anglerfish can be installed with pip:
+
+```shell
+pip install bio-anglerfish
+```
+
+Additionaly, if Docker is your cup of tea, the Dockerfile supplied in this repository should also work on both arm64 and x86 processors.
+
 ## Source development
 
 1. [Install miniconda](https://docs.conda.io/en/latest/miniconda.html).
 
 2. Set up repo clone with editable install
 
+For x86 processors (e.g. Intel/AMD):
+
 ```
 git clone https://github.com/remiolsen/anglerfish.git
 cd anglerfish
 # Create a the anglerfish conda environment
 conda env create -f environment.yml
+# Install anglerfish
+conda activate anglerfish-dev
+pip install -e ".[dev]"
+```
+
+For Arm64 processors (e.g. Apple M1/M2). First [compile and install minimap2 manually](https://github.com/lh3/minimap2?tab=readme-ov-file#installation), then:
+
+```
+git clone https://github.com/remiolsen/anglerfish.git
+cd anglerfish
+# Create a the anglerfish conda environment (but remove minimap2)
+conda env create -f <(grep -v minimap2 environment.yml)
 # Install anglerfish
 conda activate anglerfish-dev
 pip install -e ".[dev]"
@@ -145,6 +170,16 @@ In folder `anglerfish_????_??_??_?????/`
 - `*.fastq.gz` Demultiplexed reads (if any)
 - `anglerfish_stats.txt` Barcode statistics from anglerfish run
 - `anglerfish_stats.json` Machine readable anglerfish statistics
+
+## Anglerfish Explore (Experimental)
+
+`anglerfish explore` is a command that aims to explore a sequencing pool without a given samplesheet and give hints on what adapter types are present, which index lenghts are used and whether there are any UMIs within the index sequence. The Anglerfish explore command is still under heavy development but can be triggered by running:
+
+```shell
+python anglerfish/explore/cli.py
+```
+
+inside the anglerfish directory.
 
 ## Credits
 

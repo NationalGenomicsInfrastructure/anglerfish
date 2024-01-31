@@ -1,22 +1,19 @@
 import csv
 import glob
-import importlib.resources
-import os
 import re
 from dataclasses import dataclass
 from itertools import combinations
 
 import Levenshtein as lev
-import yaml
 
-p = importlib.resources.files("anglerfish.config").joinpath("adaptors.yaml")
-assert isinstance(p, os.PathLike)
-with open(p) as stream:
-    adaptors = yaml.safe_load(stream)
+from anglerfish.demux.adaptor import Adaptor, load_adaptors
 
 idelim = re.compile(r"\<N\>")
 udelim = re.compile(r"(\<U\d+\>)")
 ulen = re.compile(r"\<U(\d+)\>")
+adaptors = load_adaptors(raw=True)
+# Holy merge conflict, Batman! Fix this later
+delim = "<N>"
 
 
 @dataclass
@@ -25,68 +22,6 @@ class SampleSheetEntry:
     adaptor: object
     fastq: str
     ont_barcode: str
-
-
-class Adaptor:
-    def __init__(self, adaptor, i7_index=None, i5_index=None):
-        self.i5 = adaptors[adaptor]["i5"]
-        self.i7 = adaptors[adaptor]["i7"]
-        self.i5_index = i5_index
-        self.i7_index = i7_index
-        self.i5_umi = re.findall(udelim, self.i5)
-        self.i5_umi_before = 0
-        self.i5_umi_after = 0
-        self.i7_umi = re.findall(udelim, self.i7)
-        self.i7_umi_before = 0
-        self.i7_umi_after = 0
-        self.name = f"{adaptor}_len{len(i7_index)}"
-
-        if len(self.i5_umi) > 1 or len(self.i7_umi) > 1:
-            raise UserWarning(
-                f"Adaptor {adaptor} has more than one UMI in either i5 or i7. This is not supported."
-            )
-        # Check if UMI is before or after i5 index
-        if len(self.i5_umi) > 0 and ">" + self.i5_umi[0] in self.i5:
-            self.i5_umi_after = int(re.search(ulen, self.i5_umi[0]).group(1))
-        elif len(self.i5_umi) > 0 and self.i5_umi[0] + "<" in self.i5:
-            self.i5_umi_before = int(re.search(ulen, self.i5_umi[0]).group(1))
-        elif len(self.i5_umi) > 0:
-            raise UserWarning(
-                f"Adaptor {adaptor} has UMI but it does not flank an index. This is not supported."
-            )
-        # Check if UMI is before or after i7 index
-        if len(self.i7_umi) > 0 and ">" + self.i7_umi[0] in self.i7:
-            self.i7_umi_after = int(re.search(ulen, self.i7_umi[0]).group(1))
-        elif len(self.i7_umi) > 0 and self.i7_umi[0] + "<" in self.i7:
-            self.i7_umi_before = int(re.search(ulen, self.i7_umi[0]).group(1))
-        elif len(self.i7_umi) > 0:
-            raise UserWarning(
-                f"Adaptor {adaptor} has UMI but it does not flank an index. This is not supported."
-            )
-        if re.search(idelim, self.i5) is not None and i5_index is None:
-            raise UserWarning("Adaptor has i5 but no sequence was specified")
-        if re.search(idelim, self.i7) is not None and i7_index is None:
-            raise UserWarning("Adaptor has i7 but no sequence was specified")
-
-    def get_i5_mask(self):
-        if self.i5_index is not None:
-            new_i5 = re.sub(idelim, "N" * len(self.i5_index), self.i5)
-            new_i5 = re.sub(
-                udelim, "N" * max(self.i5_umi_after, self.i5_umi_before), new_i5
-            )
-            return new_i5
-        else:
-            return self.i5
-
-    def get_i7_mask(self):
-        if self.i7_index is not None:
-            new_i7 = re.sub(idelim, "N" * len(self.i7_index), self.i7)
-            new_i7 = re.sub(
-                udelim, "N" * max(self.i7_umi_after, self.i7_umi_before), new_i7
-            )
-            return new_i7
-        else:
-            return self.i7
 
 
 class SampleSheet:
@@ -122,7 +57,7 @@ class SampleSheet:
                 sample_name = row["sample_name"]
                 test_globs[row["fastq_path"]] = glob.glob(row["fastq_path"])
 
-                bc_re = re.compile("\/(barcode\d\d|unclassified)\/")
+                bc_re = re.compile(r"\/(barcode\d\d|unclassified)\/")
                 ont_barcode = None
                 if ont_bc:
                     ob = re.findall(bc_re, row["fastq_path"])
@@ -133,7 +68,7 @@ class SampleSheet:
 
                 ss_entry = SampleSheetEntry(
                     sample_name,
-                    Adaptor(row["adaptors"], i7, i5),
+                    Adaptor(adaptors, delim, row["adaptors"], i7, i5),
                     row["fastq_path"],
                     ont_barcode,
                 )
@@ -174,10 +109,10 @@ class SampleSheet:
         for ont_barcode, adaptors in ss_by_bc.items():
             testset[ont_barcode] = []
             for adaptor in adaptors:
-                if adaptor.i5_index is not None:
-                    testset[ont_barcode].append(adaptor.i5_index + adaptor.i7_index)
+                if adaptor.i5.has_index():
+                    testset[ont_barcode].append(adaptor.i5.index + adaptor.i7.index)
                 else:
-                    testset[ont_barcode].append(adaptor.i7_index)
+                    testset[ont_barcode].append(adaptor.i7.index)
 
         fq_distances = []
         for ont_barcode, adaptors in testset.items():
@@ -187,7 +122,9 @@ class SampleSheet:
             else:
                 for a, b in [i for i in combinations(adaptors, 2)]:
                     dist = lev.distance(a, b)
-                    assert dist > 0, f"""There is one or more identical barcodes in the input samplesheet.
+                    assert (
+                        dist > 0
+                    ), f"""There is one or more identical barcodes in the input samplesheet.
                         First one found: {a}. If these exist in different ONT barcodes, please specify the --ont_barcodes flag."""
                     distances.append(dist)
             fq_distances.append(min(distances))
