@@ -16,7 +16,7 @@ with open(p) as stream:
 
 idelim = re.compile(r"\<N\>")
 udelim = re.compile(r"(\<U\d+\>)")
-ulen = re.compile(r"\<U\(d+\)>")
+ulen = re.compile(r"\<U(\d+)\>")
 
 
 @dataclass
@@ -47,18 +47,18 @@ class Adaptor:
             )
         # Check if UMI is before or after i5 index
         if len(self.i5_umi) > 0 and ">" + self.i5_umi[0] in self.i5:
-            self.i5_umi_before = int(re.search(ulen, self.i5_umi[0]).group(1))
-        elif len(self.i5_umi) > 0 and self.i5_umi[0] + "<" in self.i5:
             self.i5_umi_after = int(re.search(ulen, self.i5_umi[0]).group(1))
+        elif len(self.i5_umi) > 0 and self.i5_umi[0] + "<" in self.i5:
+            self.i5_umi_before = int(re.search(ulen, self.i5_umi[0]).group(1))
         elif len(self.i5_umi) > 0:
             raise UserWarning(
                 f"Adaptor {adaptor} has UMI but it does not flank an index. This is not supported."
             )
         # Check if UMI is before or after i7 index
         if len(self.i7_umi) > 0 and ">" + self.i7_umi[0] in self.i7:
-            self.i7_umi_before = int(re.search(ulen, self.i7_umi[0]).group(1))
-        elif len(self.i7_umi) > 0 and self.i7_umi[0] + "<" in self.i7:
             self.i7_umi_after = int(re.search(ulen, self.i7_umi[0]).group(1))
+        elif len(self.i7_umi) > 0 and self.i7_umi[0] + "<" in self.i7:
+            self.i7_umi_before = int(re.search(ulen, self.i7_umi[0]).group(1))
         elif len(self.i7_umi) > 0:
             raise UserWarning(
                 f"Adaptor {adaptor} has UMI but it does not flank an index. This is not supported."

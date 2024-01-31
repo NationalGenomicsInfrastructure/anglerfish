@@ -22,7 +22,6 @@ def parse_cs(cs_string, index, umi_before=0, umi_after=0):
         nts = nts[umi_before:]
     if umi_after > 0:
         nts = nts[:-umi_after]
-
     # Allow for mismatches
     return nts, lev.distance(index.lower(), nts)
 
@@ -53,7 +52,7 @@ def run_minimap2(fastq_in, indexfile, output_paf, threads):
         subprocess.run(cmd, stdout=ofile, check=True)
 
 
-def parse_paf_lines(paf, min_qual=10):
+def parse_paf_lines(paf, min_qual=1):
     """
     Read and parse one paf alignment lines.
     Returns a dict with the import values for later use
