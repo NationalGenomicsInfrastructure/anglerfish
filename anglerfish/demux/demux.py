@@ -174,8 +174,8 @@ def cluster_matches(
                 fi5, d1 = parse_cs(
                     i5["cs"],
                     i5_seq,
-                    umi_before=adaptor.i5_umi_before,
-                    umi_after=adaptor.i5_umi_after,
+                    adaptor.i5_umi_before,
+                    adaptor.i5_umi_after,
                 )
             except AttributeError:
                 d1 = 0  # presumably it's single index, so no i5
@@ -186,8 +186,8 @@ def cluster_matches(
             fi7, d2 = parse_cs(
                 i7["cs"],
                 i7_seq,
-                umi_before=adaptor.i7_umi_before,
-                umi_after=adaptor.i7_umi_after,
+                adaptor.i7_umi_before,
+                adaptor.i7_umi_after,
             )
             dists.append(d1 + d2)
 
