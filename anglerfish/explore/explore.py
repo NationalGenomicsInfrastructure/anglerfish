@@ -76,32 +76,35 @@ def run_explore(
 
         df = pd.DataFrame.from_dict(aln_dict, orient="index")
         nr_good_hits = {}
+
+        # Match Insert Match = mim
+        # The cs string filter is quite strict, requiring 10+ perfect match before insert and 10+ perfect match after insert
+        # The cg string allows for mismatches within the matching strings but no insertions or deletions
+        # All cg string matches are also cs string matches (subset) but not vice versa
+        mim_re_cs = (
+            r"^cs:Z::[1-9][0-9]*\+([a,c,t,g]*):[1-9][0-9]*$"  # Match Insert Match = mim
+        )
+        mim_re_cg = r"^cg:Z:([0-9]*)M([0-9]*)I([0-9]*)M$"
+        df_mim = df[df.cs.str.match(mim_re_cs)]
+
+        # Extract the match lengths
+        match_col_df = df_mim.cg.str.extract(mim_re_cg).rename(
+            {0: "match_1_len", 1: "insert_len", 2: "match_2_len"}, axis=1
+        )
+        match_col_df = match_col_df.astype(
+            {
+                "match_1_len": "int32",
+                "insert_len": "int32",
+                "match_2_len": "int32",
+            }
+        )
+
+        df_mim.loc[match_col_df.index, match_col_df.columns] = match_col_df
+
         for adaptor_end_name, adaptor_end in zip(
             ["i5", "i7"], [adaptor.i5, adaptor.i7]
         ):
             if adaptor_end.has_index():
-                # Match Insert Match = mim
-                # The cs string filter is quite strict, requiring 10+ perfect match before insert and 10+ perfect match after insert
-                # The cg string allows for mismatches within the matching strings but no insertions or deletions
-                # All cg string matches are also cs string matches (subset) but not vice versa
-                mim_re_cs = r"^cs:Z::[1-9][0-9]*\+([a,c,t,g]*):[1-9][0-9]*$"  # Match Insert Match = mim
-                mim_re_cg = r"^cg:Z:([0-9]*)M([0-9]*)I([0-9]*)M$"
-                df_mim = df[df.cs.str.match(mim_re_cs)]
-
-                # Extract the match lengths
-                match_col_df = df_mim.cg.str.extract(mim_re_cg).rename(
-                    {0: "match_1_len", 1: "insert_len", 2: "match_2_len"}, axis=1
-                )
-                match_col_df = match_col_df.astype(
-                    {
-                        "match_1_len": "int32",
-                        "insert_len": "int32",
-                        "match_2_len": "int32",
-                    }
-                )
-
-                df_mim.loc[match_col_df.index, match_col_df.columns] = match_col_df
-
                 # Alignment thresholds
                 before_thres = round(
                     adaptor_end.len_before_index() * good_hit_threshold
@@ -111,7 +114,8 @@ def run_explore(
                 insert_thres_high = insert_thres_high
 
                 requirements = (
-                    (df_mim["match_1_len"] >= (before_thres))
+                    (df_mim["adapter"] == f"{adaptor.name}_{adaptor_end_name}")
+                    & (df_mim["match_1_len"] >= (before_thres))
                     & (df_mim["insert_len"] >= insert_thres_low)
                     & (df_mim["insert_len"] <= insert_thres_high)
                     & (df_mim["match_2_len"] >= (after_thres))
