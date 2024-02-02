@@ -112,9 +112,7 @@ def run_explore(
                 after_thres = round(adaptor_end.len_after_index() * good_hit_threshold)
                 insert_thres_low = insert_thres_low
                 insert_thres_high = insert_thres_high
-                log.info(
-                    f"Requiring at least {before_thres} and {after_thres} matches before and after index region respectively for {adaptor_end_name}"
-                )
+
                 requirements = (
                     (df_mim["adapter"] == f"{adaptor.name}_{adaptor_end_name}")
                     & (df_mim["match_1_len"] >= (before_thres))
