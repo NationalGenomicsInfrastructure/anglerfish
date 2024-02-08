@@ -12,7 +12,7 @@ idelim = re.compile(r"\<N\>")
 udelim = re.compile(r"(\<U\d+\>)")
 ulen = re.compile(r"\<U(\d+)\>")
 adaptors = load_adaptors(raw=True)
-# Holy merge conflict, Batman! Fix this later
+# This is some leftover ugliness from a merge conflict to reconcile the old and new adaptor classes
 delim = "<N>"
 
 

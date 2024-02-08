@@ -131,7 +131,6 @@ def load_adaptors(raw=False):
         return adaptors_raw
     adaptors = []
     for adaptor in adaptors_raw:
-        # This is now broken, I think
         adaptors.append(
             Adaptor(adaptors_raw, "N", adaptor, i7_index=None, i5_index=None)
         )
