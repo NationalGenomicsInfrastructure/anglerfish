@@ -51,31 +51,36 @@ class Adaptor:
                 f"Adaptor {adaptor_type} has UMI but it does not flank an index. This is not supported."
             )
 
+    def get_i5_mask(self, insert_Ns=True):
+        ilen = len(self.i5_index) if self.i5_index is not None and insert_Ns else 0
+        ulen = max(self.i5_umi_after, self.i5_umi_before) if insert_Ns else 0
         # Test if the index is specified in the adaptor sequence when it shouldn't be
-        if has_match(idelim, self.i5.sequence) and i5_index is None:
+        if has_match(idelim, self.i5.sequence) and self.i5_index is None and insert_Ns:
             raise UserWarning("Adaptor has i5 but no sequence was specified")
-        if has_match(idelim, self.i7.sequence) and i7_index is None:
-            raise UserWarning("Adaptor has i7 but no sequence was specified")
-
-    def get_i5_mask(self):
-        if self.i5_index is not None:
-            new_i5 = re.sub(idelim, "N" * len(self.i5_index), self.i5.sequence)
-            new_i5 = re.sub(
-                udelim, "N" * max(self.i5_umi_after, self.i5_umi_before), new_i5
-            )
+        if self.i5_index is not None or not insert_Ns:
+            new_i5 = re.sub(idelim, "N" * ilen, self.i5.sequence)
+            new_i5 = re.sub(udelim, "N" * ulen, new_i5)
             return new_i5
         else:
             return self.i5.sequence
 
-    def get_i7_mask(self):
-        if self.i7_index is not None:
-            new_i7 = re.sub(idelim, "N" * len(self.i7_index), self.i7.sequence)
-            new_i7 = re.sub(
-                udelim, "N" * max(self.i7_umi_after, self.i7_umi_before), new_i7
-            )
+    def get_i7_mask(self, insert_Ns=True):
+        ilen = len(self.i7_index) if self.i7_index is not None and insert_Ns else 0
+        ulen = max(self.i7_umi_after, self.i7_umi_before) if insert_Ns else 0
+        # Test if the index is specified in the adaptor sequence when it shouldn't be
+        if has_match(idelim, self.i7.sequence) and self.i7_index is None and insert_Ns:
+            raise UserWarning("Adaptor has i7 but no sequence was specified")
+        if self.i7_index is not None or not insert_Ns:
+            new_i7 = re.sub(idelim, "N" * ilen, self.i7.sequence)
+            new_i7 = re.sub(udelim, "N" * ulen, new_i7)
             return new_i7
         else:
             return self.i7.sequence
+
+    def get_fastastring(self, insert_Ns=True):
+        fasta_i5 = f">{self.name}_i5\n{self.get_i5_mask(insert_Ns)}\n"
+        fasta_i7 = f">{self.name}_i7\n{self.get_i7_mask(insert_Ns)}\n"
+        return fasta_i5 + fasta_i7
 
 
 class AdaptorPart:
@@ -128,7 +133,7 @@ def load_adaptors(raw=False):
     for adaptor in adaptors_raw:
         # This is now broken, I think
         adaptors.append(
-            Adaptor(adaptors_raw, "<N>", adaptor, i7_index=None, i5_index=None)
+            Adaptor(adaptors_raw, "N", adaptor, i7_index=None, i5_index=None)
         )
 
     return adaptors
