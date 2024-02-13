@@ -95,7 +95,6 @@ class AdaptorPart:
         self.len_after_index = 0
         self.len_before_index = 0
 
-
         # Dynamically assign attributes
         self.umi = re.findall(udelim, self.sequence)
 
