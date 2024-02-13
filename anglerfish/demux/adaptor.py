@@ -103,22 +103,22 @@ class AdaptorPart:
         if len(self.umi) > 0 and ">" + self.umi[0] in self.sequence:
             # The index region is INDEX+UMI
             self.umi_after = int(re.search(ulen, self.umi[0]).group(1))
-            self.len_before_index = len(delim.split(self.sequence)[0])
+            self.len_before_index = len(idelim.split(self.sequence)[0])
             self.len_after_index = len(udelim.split(self.sequence)[-1])
         elif len(self.umi) > 0 and self.umi[0] + "<" in self.sequence:
             # The index region is UMI+INDEX
             self.umi_before = int(re.search(ulen, self.umi[0]).group(1))
             self.len_before_index = len(udelim.split(self.sequence)[0])
-            self.len_after_index = len(delim.split(self.sequence)[-1])
+            self.len_after_index = len(idelim.split(self.sequence)[-1])
         elif len(self.umi) > 0:
             # TODO give details which adaptor has the problem
             raise UserWarning(
                 "Found adaptor with UMI but it does not flank an index. This is not supported."
             )
         # Non UMI cases
-        elif has_match(delim, self.sequence):
-            self.len_before_index = len(delim.split(self.sequence)[0])
-            self.len_after_index = len(delim.split(self.sequence)[-1])
+        elif has_match(idelim, self.sequence):
+            self.len_before_index = len(idelim.split(self.sequence)[0])
+            self.len_after_index = len(idelim.split(self.sequence)[-1])
 
     def has_index(self):
         return self.sequence.find(self.delim) > -1
