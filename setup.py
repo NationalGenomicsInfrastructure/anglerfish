@@ -38,6 +38,7 @@ setup(
     entry_points={
         "console_scripts": [
             "anglerfish=anglerfish.anglerfish:anglerfish",
+            "anglerfish-explore=anglerfish.explore.cli:main",
         ],
     },
     zip_safe=False,
