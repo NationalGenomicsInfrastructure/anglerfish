@@ -90,6 +90,11 @@ class AdaptorPart:
         self.name = name
         self.delim = delim
         self.index = index
+        self.umi_after = 0
+        self.umi_before = 0
+        self.len_after_index = 0
+        self.len_before_index = 0
+
 
         # Dynamically assign attributes
         self.umi = re.findall(udelim, self.sequence)
