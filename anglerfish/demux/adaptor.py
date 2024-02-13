@@ -115,6 +115,10 @@ class AdaptorPart:
             raise UserWarning(
                 "Found adaptor with UMI but it does not flank an index. This is not supported."
             )
+        # Non UMI cases
+        elif has_match(delim, self.sequence):
+            self.len_before_index = len(delim.split(self.sequence)[0])
+            self.len_after_index = len(delim.split(self.sequence)[-1])
 
     def has_index(self):
         return self.sequence.find(self.delim) > -1
