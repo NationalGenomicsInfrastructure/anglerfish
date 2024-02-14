@@ -90,24 +90,44 @@ class AdaptorPart:
         self.name = name
         self.delim = delim
         self.index = index
+        self.umi_after = 0
+        self.umi_before = 0
+        self.len_after_index = 0
+        self.len_before_index = 0
+
+        # Dynamically assign attributes
+        self.umi = re.findall(udelim, self.sequence)
+
+        # TODO Duplicated from Adaptor class, will be merged later
+        # Check if UMI is before or after index
+        if len(self.umi) > 0 and ">" + self.umi[0] in self.sequence:
+            # The index region is INDEX+UMI
+            self.umi_after = int(re.search(ulen, self.umi[0]).group(1))
+            self.len_before_index = len(idelim.split(self.sequence)[0])
+            self.len_after_index = len(udelim.split(self.sequence)[-1])
+        elif len(self.umi) > 0 and self.umi[0] + "<" in self.sequence:
+            # The index region is UMI+INDEX
+            self.umi_before = int(re.search(ulen, self.umi[0]).group(1))
+            self.len_before_index = len(udelim.split(self.sequence)[0])
+            self.len_after_index = len(idelim.split(self.sequence)[-1])
+        elif len(self.umi) > 0:
+            # TODO give details which adaptor has the problem
+            raise UserWarning(
+                "Found adaptor with UMI but it does not flank an index. This is not supported."
+            )
+        # Non UMI cases
+        elif has_match(idelim, self.sequence):
+            self.len_before_index = len(idelim.split(self.sequence)[0])
+            self.len_after_index = len(idelim.split(self.sequence)[-1])
 
     def has_index(self):
         return self.sequence.find(self.delim) > -1
 
-    def len_before_index(self):
-        return self.sequence.find(self.delim)
+    def len_before_index_region(self):
+        return self.len_before_index
 
-    def len_after_index(self):
-        return len(self.sequence) - self.sequence.find(self.delim) - len(self.delim)
-
-    def get_mask(self, insert_Ns):
-        if self.has_index():
-            if not insert_Ns:
-                return self.sequence.replace(self.delim, "")
-            else:
-                return self.sequence.replace(self.delim, "N" * len(self.index))
-        else:
-            return self.sequence
+    def len_after_index_region(self):
+        return self.len_after_index
 
 
 # General function to check if a string contains a pattern
