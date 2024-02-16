@@ -128,7 +128,7 @@ def run_demux(args):
                     adaptors_sorted[key], fragments, args.max_distance, **rev
                 )
                 flipped[flip] = (rc_matches, rc_no_matches, len(rc_matches))
-            best_flip = max(zip(flipped.values(), flipped.keys()))[1]
+            best_flip = max(flipped, key=lambda k: flipped[k][2])
 
             # There are no barcode flips with unambiguously more matches, so we abort
             if (
