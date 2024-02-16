@@ -55,5 +55,5 @@ RUN eval "$(micromamba shell hook --shell bash)" && python -m pip install -e .[d
 # Main
 #####
 FROM base as main
-USER $MAMBA_USER
 RUN eval "$(micromamba shell hook --shell bash)" && python -m pip install .[dev]
+USER $MAMBA_USER
