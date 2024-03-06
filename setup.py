@@ -10,6 +10,7 @@ Or from bioconda:
 
     conda install -c bioconda anglerfish
 """
+
 from pathlib import Path
 
 from setuptools import find_packages, setup
