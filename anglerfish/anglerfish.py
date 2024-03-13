@@ -26,7 +26,7 @@ from .demux.samplesheet import SampleSheet
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("anglerfish")
 
-MAX_PROCESSES = 256  # Ought to be enough for anybody
+MAX_PROCESSES = 64  # Ought to be enough for anybody
 
 
 def run_demux(args):
