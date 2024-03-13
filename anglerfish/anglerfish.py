@@ -26,6 +26,8 @@ from .demux.samplesheet import SampleSheet
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("anglerfish")
 
+MAX_PROCESSES = 256  # Ought to be enough for anybody
+
 
 def run_demux(args):
     multiprocessing.set_start_method("spawn")
@@ -54,6 +56,11 @@ def run_demux(args):
         )
         exit()
     log.debug(f"Samplesheet bc_dist == {bc_dist}")
+    if args.threads > MAX_PROCESSES:
+        log.warning(
+            f" Setting threads to {MAX_PROCESSES} as the maximum number of processes is {MAX_PROCESSES}"
+        )
+        args.threads = MAX_PROCESSES
 
     # Sort the adaptors by type and size
     adaptors_t = [(entry.adaptor.name, entry.ont_barcode) for entry in ss]
@@ -151,9 +158,10 @@ def run_demux(args):
                 sorted([len(i[1]) for i in flipped.values()])[-1]
                 == sorted([len(i[1]) for i in flipped.values()])[-2]
             ):
-                log.info(
-                    " Lenient mode: Could not find any barcode reverse complements with unambiguously more matches"
+                log.warning(
+                    " Lenient mode: Could not find any barcode reverse complements with unambiguously more matches. Using original index orientation for all adaptors. Please study the results carefully!"
                 )
+                no_matches, matches = flipped["original"]
             elif (
                 best_flip != "None"
                 and len(flipped[best_flip][1])
@@ -167,6 +175,7 @@ def run_demux(args):
                 log.info(
                     f" Lenient mode: using original index orientation for {adaptor_name}"
                 )
+                no_matches, matches = flipped["original"]
         else:
             no_matches, matches = cluster_matches(
                 adaptors_sorted[key], fragments, args.max_distance
