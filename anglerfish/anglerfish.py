@@ -3,6 +3,7 @@ import argparse
 import glob
 import gzip
 import logging
+import multiprocessing
 import os
 import uuid
 from collections import Counter
@@ -25,8 +26,12 @@ from .demux.samplesheet import SampleSheet
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("anglerfish")
 
+MAX_PROCESSES = 64  # Ought to be enough for anybody
+
 
 def run_demux(args):
+    multiprocessing.set_start_method("spawn")
+
     if args.debug:
         log.setLevel(logging.DEBUG)
     run_uuid = str(uuid.uuid4())
@@ -51,6 +56,11 @@ def run_demux(args):
         )
         exit()
     log.debug(f"Samplesheet bc_dist == {bc_dist}")
+    if args.threads > MAX_PROCESSES:
+        log.warning(
+            f" Setting threads to {MAX_PROCESSES} as the maximum number of processes is {MAX_PROCESSES}"
+        )
+        args.threads = MAX_PROCESSES
 
     # Sort the adaptors by type and size
     adaptors_t = [(entry.adaptor.name, entry.ont_barcode) for entry in ss]
@@ -103,6 +113,7 @@ def run_demux(args):
         flipped_i7 = False
         flipped_i5 = False
         flips = {
+            "original": {"i7_reversed": False, "i5_reversed": False},
             "i7": {"i7_reversed": True, "i5_reversed": False},
             "i5": {"i7_reversed": False, "i5_reversed": True},
             "i7+i5": {"i7_reversed": True, "i5_reversed": True},
@@ -119,38 +130,58 @@ def run_demux(args):
             )
             flipped_i7, flipped_i5 = flips[args.force_rc].values()
         elif args.lenient:  # Try reverse complementing the I5 and/or i7 indices and choose the best match
-            no_matches, matches = cluster_matches(
-                adaptors_sorted[key], fragments, args.max_distance
-            )
             flipped = {}
+            results = []
+            pool = multiprocessing.Pool(
+                processes=4 if args.threads >= 4 else args.threads
+            )
+            results = []
             for flip, rev in flips.items():
-                rc_no_matches, rc_matches = cluster_matches(
-                    adaptors_sorted[key], fragments, args.max_distance, **rev
+                spawn = pool.apply_async(
+                    cluster_matches,
+                    args=(
+                        adaptors_sorted[key],
+                        fragments,
+                        args.max_distance,
+                        rev["i7_reversed"],
+                        rev["i5_reversed"],
+                    ),
                 )
-                flipped[flip] = (rc_matches, rc_no_matches, len(rc_matches))
-            best_flip = max(flipped, key=lambda k: flipped[k][2])
+                results.append((spawn, flip))
+            pool.close()
+            pool.join()
+            flipped = {result[1]: result[0].get() for result in results}
 
-            # There are no barcode flips with unambiguously more matches, so we abort
+            best_flip = max(flipped, key=lambda k: len(flipped[k][1]))
+
             if (
-                sorted([i[2] for i in flipped.values()])[-1]
-                == sorted([i[2] for i in flipped.values()])[-2]
+                sorted([len(i[1]) for i in flipped.values()])[-1]
+                == sorted([len(i[1]) for i in flipped.values()])[-2]
+            ):
+                log.warning(
+                    " Lenient mode: Could not find any barcode reverse complements with unambiguously more matches. Using original index orientation for all adaptors. Please study the results carefully!"
+                )
+                no_matches, matches = flipped["original"]
+            elif (
+                best_flip != "None"
+                and len(flipped[best_flip][1])
+                > len(flipped["original"][1]) * args.lenient_factor
             ):
                 log.info(
-                    "Could not find any barcode reverse complements with unambiguously more matches"
+                    f" Lenient mode: Reverse complementing {best_flip} index for adaptor {adaptor_name} found at least {args.lenient_factor} times more matches"
                 )
-            elif flipped[best_flip][2] > len(matches) * args.lenient_factor:
-                log.info(
-                    f" Reverse complementing {best_flip} index for adaptor {adaptor_name} found at least {args.lenient_factor} times more matches"
-                )
-                matches, no_matches, _ = flipped[best_flip]
-                flipped_i7, flipped_i5 = flips[best_flip].values()
+                no_matches, matches = flipped[best_flip]
             else:
-                log.info(f" Using original index orientation for {adaptor_name}")
+                log.info(
+                    f" Lenient mode: using original index orientation for {adaptor_name}"
+                )
+                no_matches, matches = flipped["original"]
         else:
             no_matches, matches = cluster_matches(
                 adaptors_sorted[key], fragments, args.max_distance
             )
 
+        out_pool = []
         for k, v in groupby(sorted(matches, key=lambda x: x[3]), key=lambda y: y[3]):
             # To avoid collisions in fastq filenames, we add the ONT barcode to the sample name
             fq_prefix = k
@@ -179,7 +210,21 @@ def run_demux(args):
             )
             report.add_sample_stat(sample_stat)
             if not args.skip_demux:
-                write_demuxedfastq(sample_dict, fastq_path, fq_name)
+                out_pool.append((sample_dict, fastq_path, fq_name))
+
+        # Write demuxed fastq files
+        pool = multiprocessing.Pool(processes=args.threads)
+        results = []
+        for out in out_pool:
+            log.debug(f" Writing {out[2]}")
+            spawn = pool.starmap_async(write_demuxedfastq, [out])
+            results.append((spawn, out[2]))
+        pool.close()
+        pool.join()
+        for result in results:
+            log.debug(
+                f" PID-{result[0].get()}: wrote {result[1]}, size {os.path.getsize(result[1])} bytes"
+            )
 
         # Top unmatched indexes
         nomatch_count = Counter([x[3] for x in no_matches])
@@ -224,7 +269,11 @@ def anglerfish():
         help="Analysis output folder (default: Current dir)",
     )
     parser.add_argument(
-        "--threads", "-t", default=4, help="Number of threads to use (default: 4)"
+        "--threads",
+        "-t",
+        default=4,
+        type=int,
+        help="Number of threads to use (default: 4)",
     )
     parser.add_argument(
         "--skip_demux",

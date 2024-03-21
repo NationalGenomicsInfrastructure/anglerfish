@@ -134,9 +134,9 @@ def run_explore(
                 )
                 match_col_df = match_col_df.astype({"match_1_len": "int32"})
 
-                df_good_hits.loc[
-                    match_col_df.index, match_col_df.columns
-                ] = match_col_df
+                df_good_hits.loc[match_col_df.index, match_col_df.columns] = (
+                    match_col_df
+                )
 
                 thres = round(
                     (
