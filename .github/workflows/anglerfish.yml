@@ -37,4 +37,10 @@ jobs:
       - shell: bash -l {0}
         name: Run anglerfish with test data
         run: |
-          anglerfish -s test/samples.csv
+          anglerfish run -s test/samples.csv
+
+      # Run anglerfish explore
+      - shell: bash -l {0}
+        name: Run anglerfish explore
+        run: |
+          anglerfish explore -f test/BC18_P14351_1001.fastq.gz -o test/explore_output
