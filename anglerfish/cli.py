@@ -2,11 +2,11 @@ import argparse
 import datetime as dt
 import os
 from enum import Enum
+from typing import Optional
 
 import pkg_resources
 import typer
 from typing_extensions import Annotated
-from typing import Optional
 
 from .anglerfish import run_demux
 from .explore.explore import run_explore
@@ -18,6 +18,7 @@ class IndexOrientations(str, Enum):
     i7 = "i7"
     i5 = "i5"
     i7i5 = "i7+i5"
+    original = "original"
 
 
 def version_callback(value: bool):
@@ -215,7 +216,7 @@ def run(
         ),
     ] = False,
     lenient_factor: Annotated[
-        int,
+        float,
         typer.Option(
             "--lenient_factor",
             "-x",
@@ -229,7 +230,7 @@ def run(
             "-p",
             help="Force reverse complementing the I5 and/or I7 indices. If set to anything other than 'original' this will disregard lenient mode.",
         ),
-    ] = None,
+    ] = IndexOrientations.original,
     ont_barcodes: Annotated[
         bool,
         typer.Option(

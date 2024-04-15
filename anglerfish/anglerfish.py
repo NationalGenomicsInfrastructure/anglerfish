@@ -116,7 +116,7 @@ def run_demux(args):
             "i5": {"i7_reversed": False, "i5_reversed": True},
             "i7+i5": {"i7_reversed": True, "i5_reversed": True},
         }
-        if args.force_rc is not None:
+        if args.force_rc != "original":
             log.info(
                 f" Force reverse complementing {args.force_rc} index for adaptor {adaptor_name}. Lenient mode is disabled"
             )
