@@ -4,6 +4,7 @@ import gzip
 import logging
 import multiprocessing
 import os
+import sys
 import uuid
 from collections import Counter
 from itertools import groupby
@@ -37,7 +38,18 @@ def run_demux(args):
     ss = SampleSheet(args.samplesheet, args.ont_barcodes)
     version = pkg_resources.get_distribution("bio-anglerfish").version
     report = Report(args.run_name, run_uuid, version)
-
+    sys.stderr.write("""
+     ___
+   ( )  \ -..__
+      _.|~”~~~”…_
+    ^´           `>.
+(+ (+ )             “<..<^(
+  `´  ``´      ___       (
+   \__..~      __(   _…_(
+   \                /
+    “--…_     _..~%´
+         ```´´
+""")
     log.info(f" version {version}")
     log.info(f" arguments {vars(args)}")
     log.info(f" run uuid {run_uuid}")
