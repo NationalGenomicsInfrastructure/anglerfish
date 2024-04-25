@@ -38,8 +38,7 @@ setup(
     extras_require={"dev": ["ruff", "mypy", "editorconfig-checker"]},
     entry_points={
         "console_scripts": [
-            "anglerfish=anglerfish.anglerfish:anglerfish",
-            "anglerfish-explore=anglerfish.explore.cli:main",
+            "anglerfish=anglerfish.cli:app",
         ],
     },
     zip_safe=False,

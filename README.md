@@ -122,7 +122,7 @@ P12345_101,truseq,CAGGACGT,/path/to/*.fastq.gz
 Then run:
 
 ```
-anglerfish -s /path/to/samples.csv
+anglerfish run -s /path/to/samples.csv
 ```
 
 ### Options
@@ -173,10 +173,10 @@ In folder `anglerfish_????_??_??_?????/`
 
 ## Anglerfish Explore (Experimental)
 
-`anglerfish-explore` is a command that aims to explore a sequencing pool without a given samplesheet and give hints on what adapter types are present, which index lenghts are used and whether there are any UMIs within the index sequence. The Anglerfish explore command is still under heavy development but can be triggered by running, e.g. for help text:
+`anglerfish explore` is a command that aims to explore a sequencing pool without a given samplesheet and give hints on what adapter types are present, which index lenghts are used and whether there are any UMIs within the index sequence. The Anglerfish explore command is still under heavy development but can be triggered by running, e.g. for help text:
 
 ```shell
-anglerfish-explore --help
+anglerfish explore --help
 ```
 
 ## Credits

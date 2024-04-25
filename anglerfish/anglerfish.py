@@ -1,13 +1,12 @@
 #!/usr/bin/env python
-import argparse
 import glob
 import gzip
 import logging
 import multiprocessing
 import os
+import sys
 import uuid
 from collections import Counter
-from datetime import datetime as dt
 from itertools import groupby
 
 import numpy as np
@@ -39,7 +38,18 @@ def run_demux(args):
     ss = SampleSheet(args.samplesheet, args.ont_barcodes)
     version = pkg_resources.get_distribution("bio-anglerfish").version
     report = Report(args.run_name, run_uuid, version)
-
+    sys.stderr.write("""
+     ___
+   ( )  \ -..__
+      _.|~”~~~”…_
+    ^´           `>.
+(+ (+ )             “<..<^(
+  `´  ``´      ___       (
+   \__..~      __(   _…_(
+   \                /
+    “--…_     _..~%´
+         ```´´
+""")
     log.info(f" version {version}")
     log.info(f" arguments {vars(args)}")
     log.info(f" run uuid {run_uuid}")
@@ -118,7 +128,7 @@ def run_demux(args):
             "i5": {"i7_reversed": False, "i5_reversed": True},
             "i7+i5": {"i7_reversed": True, "i5_reversed": True},
         }
-        if args.force_rc is not None:
+        if args.force_rc != "original":
             log.info(
                 f" Force reverse complementing {args.force_rc} index for adaptor {adaptor_name}. Lenient mode is disabled"
             )
@@ -245,105 +255,3 @@ def run_demux(args):
     report.write_report(args.out_fastq)
     report.write_json(args.out_fastq)
     report.write_dataframe(args.out_fastq, ss)
-
-    if args.skip_fastqc:
-        log.warning(
-            " As of version 0.4.1, built in support for FastQC + MultiQC is removed. The '-f' flag is redundant."
-        )
-
-
-def anglerfish():
-    parser = argparse.ArgumentParser(
-        description="Tools to demux I7 and I5 barcodes when sequenced by single-molecules"
-    )
-    parser.add_argument(
-        "--samplesheet",
-        "-s",
-        required=True,
-        help="CSV formatted list of samples and barcodes",
-    )
-    parser.add_argument(
-        "--out_fastq",
-        "-o",
-        default=".",
-        help="Analysis output folder (default: Current dir)",
-    )
-    parser.add_argument(
-        "--threads",
-        "-t",
-        default=4,
-        type=int,
-        help="Number of threads to use (default: 4)",
-    )
-    parser.add_argument(
-        "--skip_demux",
-        "-c",
-        action="store_true",
-        help="Only do BC counting and not demuxing",
-    )
-    parser.add_argument(
-        "--skip_fastqc", "-f", action="store_true", help=argparse.SUPPRESS
-    )
-    parser.add_argument(
-        "--max-distance",
-        "-m",
-        type=int,
-        help="Manually set maximum edit distance for BC matching, automatically set this is set to either 1 or 2",
-    )
-    parser.add_argument(
-        "--max-unknowns",
-        "-u",
-        type=int,
-        help="Maximum number of unknown indices to show in the output (default: length of samplesheet + 10)",
-    )
-    parser.add_argument(
-        "--run_name",
-        "-r",
-        default="anglerfish",
-        help="Name of the run (default: anglerfish)",
-    )
-    parser.add_argument(
-        "--lenient",
-        "-l",
-        action="store_true",
-        help="Will try reverse complementing the I5 and/or I7 indices and choose the best match.",
-    )
-    parser.add_argument(
-        "--lenient_factor",
-        "-x",
-        default=4.0,
-        type=float,
-        help="If lenient is set, this is the minimum factor of additional matches required to reverse complement the index (default: 4.0)",
-    )
-    parser.add_argument(
-        "--force_rc",
-        "-p",
-        choices=["i7", "i5", "i7+i5"],
-        help="Force reverse complementing the I5 and/or I7 indices. This will disregard lenient mode.",
-    )
-    parser.add_argument(
-        "--ont_barcodes",
-        "-n",
-        action="store_true",
-        help="Will assume the samplesheet refers to a single ONT run prepped with a barcoding kit. And will treat each barcode separately",
-    )
-    parser.add_argument(
-        "--debug", "-d", action="store_true", help="Extra commandline output"
-    )
-    parser.add_argument(
-        "--version",
-        "-v",
-        action="version",
-        help="Print version and quit",
-        version=f'anglerfish {pkg_resources.get_distribution("bio-anglerfish").version}',
-    )
-    args = parser.parse_args()
-    utcnow = dt.utcnow()
-    runname = utcnow.strftime(f"{args.run_name}_%Y_%m_%d_%H%M%S")
-
-    assert os.path.exists(args.out_fastq)
-    assert os.path.exists(args.samplesheet)
-    args.out_fastq = os.path.join(os.path.abspath(args.out_fastq), runname)
-    args.samplesheet = os.path.abspath(args.samplesheet)
-    args.run_name = runname
-    run_demux(args)
