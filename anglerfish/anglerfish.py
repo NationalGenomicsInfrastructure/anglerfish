@@ -34,7 +34,6 @@ def run_demux(args):
     if args.debug:
         log.setLevel(logging.DEBUG)
     run_uuid = str(uuid.uuid4())
-    os.mkdir(args.out_fastq)
     ss = SampleSheet(args.samplesheet, args.ont_barcodes)
     version = pkg_resources.get_distribution("bio-anglerfish").version
     report = Report(args.run_name, run_uuid, version)
@@ -80,7 +79,12 @@ def run_demux(args):
         adaptors_sorted[(entry.adaptor.name, entry.ont_barcode)].append(
             (entry.sample_name, entry.adaptor, os.path.abspath(entry.fastq))
         )
-
+    if os.path.exists(args.out_fastq):
+        raise FileExistsError(
+            f"Output folder '{args.out_fastq}' already exists. Please remove it or specify another --run_name"
+        )
+    else:
+        os.mkdir(args.out_fastq)
     out_fastqs = []
     for key, sample in adaptors_sorted.items():
         adaptor_name, ont_barcode = key
