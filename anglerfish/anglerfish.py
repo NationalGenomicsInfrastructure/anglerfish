@@ -9,6 +9,7 @@ import uuid
 from collections import Counter
 from itertools import groupby
 
+import Levenshtein as lev
 import numpy as np
 import pkg_resources
 
@@ -242,11 +243,41 @@ def run_demux(args):
 
         # Top unmatched indexes
         nomatch_count = Counter([x[3] for x in no_matches])
-        if args.max_unknowns is None:
+        if args.max_unknowns == 0:
             args.max_unknowns = len([sample for sample in ss]) + 10
-        report.add_unmatched_stat(
-            nomatch_count.most_common(args.max_unknowns), ont_barcode, adaptor_name
-        )
+
+        # We search for the closest sample in the samplesheet to the list of unknowns
+        top_unknowns = []
+        for i in nomatch_count.most_common(args.max_unknowns):
+            sample_dists = [
+                (
+                    lev.distance(
+                        i[0], f"{x.adaptor.i7_index}+{x.adaptor.i5_index}".lower()
+                    ),
+                    x.sample_name,
+                )
+                for x in ss
+            ]
+            closest_sample = min(sample_dists, key=lambda x: x[0])
+            # If the distance is more than half the index length, we remove it
+            if closest_sample[0] >= (len(i[0]) / 2) + 1:
+                closest_sample = (closest_sample[0], None)
+            else:
+                # We might have two samples with the same distance
+                all_min = [
+                    x[1]
+                    for x in sample_dists
+                    if x[0] == closest_sample[0] and x[1] != closest_sample[1]
+                ]
+                # This list might be too long, so we truncate it
+                if len(all_min) > 4:
+                    all_min = all_min[:4]
+                    all_min.append("...")
+                if all_min:
+                    closest_sample = (closest_sample[0], ";".join(all_min))
+
+            top_unknowns.append([i[0], i[1], closest_sample[1]])
+        report.add_unmatched_stat(top_unknowns, ont_barcode, adaptor_name)
 
     # Check if there were samples in the samplesheet without adaptor alignments and add them to report
     for entry in ss:
