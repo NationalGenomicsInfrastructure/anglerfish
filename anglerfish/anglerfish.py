@@ -186,6 +186,7 @@ def run_demux(args):
                     f" Lenient mode: Reverse complementing {best_flip} index for adaptor {adaptor_name} found at least {args.lenient_factor} times more matches"
                 )
                 no_matches, matches = flipped[best_flip]
+                flipped_i7, flipped_i5 = flips[best_flip].values()
             else:
                 log.info(
                     f" Lenient mode: using original index orientation for {adaptor_name}"
