@@ -27,6 +27,18 @@ log = logging.getLogger("anglerfish")
 
 MAX_PROCESSES = 64  # Ought to be enough for anybody
 
+anglerfish_logo = """
+     ___
+   ( )  \ -..__
+      _.|~”~~~”…_
+    ^´           `>.
+(+ (+ )             “<..<^(
+  `´  ``´      ___       (
+   \__..~      __(   _…_(
+   \                /
+    “--…_     _..~%´
+         ```´´
+"""
 
 def run_demux(args):
     multiprocessing.set_start_method("spawn")
@@ -38,18 +50,7 @@ def run_demux(args):
     ss = SampleSheet(args.samplesheet, args.ont_barcodes)
     version = pkg_resources.get_distribution("bio-anglerfish").version
     report = Report(args.run_name, run_uuid, version)
-    sys.stderr.write("""
-     ___
-   ( )  \ -..__
-      _.|~”~~~”…_
-    ^´           `>.
-(+ (+ )             “<..<^(
-  `´  ``´      ___       (
-   \__..~      __(   _…_(
-   \                /
-    “--…_     _..~%´
-         ```´´
-""")
+    sys.stderr.write(anglerfish_logo)
     log.info(f" version {version}")
     log.info(f" arguments {vars(args)}")
     log.info(f" run uuid {run_uuid}")
