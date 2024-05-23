@@ -106,7 +106,9 @@ class Adaptor:
 
 
 class AdaptorPart:
-    # This class is used either the i5 or i7 adaptor
+    """This class is used for the i5 or i7 adaptor.
+    """
+
     def __init__(self, sequence, name, delim, index):
         self.sequence = sequence
         self.name = name
@@ -152,16 +154,18 @@ class AdaptorPart:
         return self.len_after_index
 
 
-# General function to check if a string contains a pattern
 def has_match(delim, seq):
+    """General function to check if a string contains a pattern.
+    """
     match = re.search(delim, seq)
     if match is None:
         return False
     return True
 
 
-# Fetch all adaptors
 def load_adaptors(raw=False) -> list[Adaptor] | list[dict]:
+    """Fetch all adaptors.
+    """
     p = importlib.resources.files("anglerfish.config").joinpath("adaptors.yaml")
     assert isinstance(p, os.PathLike)
 
