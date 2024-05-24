@@ -23,7 +23,7 @@ class Adaptor:
         i7_index: str | None = None,
         i5_index: str | None = None,
     ):
-        self.name = name
+        self.name: str = name
         self.index_token: str = INDEX_TOKEN
 
         # i5 attributes
@@ -33,9 +33,9 @@ class Adaptor:
             index=i5_index,
         )
         self.i5_index: str | None = i5_index
-        self.i5_umi = self.i5.umi_token
-        self.i5_umi_before = self.i5.len_umi_before_index
-        self.i5_umi_after = self.i5.len_umi_after_index
+        self.i5_umi: str | None = self.i5.umi_token
+        self.i5_umi_before: int = self.i5.len_umi_before_index
+        self.i5_umi_after: int = self.i5.len_umi_after_index
 
         # i7 attributes
         self.i7 = AdaptorPart(
@@ -44,11 +44,11 @@ class Adaptor:
             index=i7_index,
         )
         self.i7_index: str | None = i7_index
-        self.i7_umi = re.findall(UMI_TOKEN, self.i7.sequence_token)
-        self.i7_umi_before = self.i7.len_umi_before_index
-        self.i7_umi_after = self.i7.len_umi_after_index
+        self.i7_umi: str | None = self.i7.umi_token
+        self.i7_umi_before: int = self.i7.len_umi_before_index
+        self.i7_umi_after: int = self.i7.len_umi_after_index
 
-    def get_i5_mask(self, insert_Ns=True):
+    def get_i5_mask(self, insert_Ns: bool = True) -> str:
         ilen = len(self.i5_index) if self.i5_index is not None and insert_Ns else 0
         ulen = max(self.i5_umi_after, self.i5_umi_before) if insert_Ns else 0
         # Test if the index is specified in the adaptor sequence when it shouldn't be
@@ -65,7 +65,7 @@ class Adaptor:
         else:
             return self.i5.sequence_token
 
-    def get_i7_mask(self, insert_Ns=True):
+    def get_i7_mask(self, insert_Ns: bool = True) -> str:
         ilen = len(self.i7_index) if self.i7_index is not None and insert_Ns else 0
         ulen = max(self.i7_umi_after, self.i7_umi_before) if insert_Ns else 0
         # Test if the index is specified in the adaptor sequence when it shouldn't be
@@ -82,7 +82,7 @@ class Adaptor:
         else:
             return self.i7.sequence_token
 
-    def get_fastastring(self, insert_Ns=True):
+    def get_fastastring(self, insert_Ns: bool = True) -> str:
         fasta_i5 = f">{self.name}_i5\n{self.get_i5_mask(insert_Ns)}\n"
         fasta_i7 = f">{self.name}_i7\n{self.get_i7_mask(insert_Ns)}\n"
         return fasta_i5 + fasta_i7
