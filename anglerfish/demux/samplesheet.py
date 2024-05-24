@@ -8,15 +8,15 @@ import Levenshtein as lev
 
 from anglerfish.demux.adaptor import Adaptor, load_adaptors
 
-adaptors = load_adaptors(raw=True)
+ADAPTORS = load_adaptors(raw=True)
 
 
 @dataclass
 class SampleSheetEntry:
     sample_name: str
-    adaptor: object
+    adaptor: Adaptor
     fastq: str
-    ont_barcode: str
+    ont_barcode: str | None
 
 
 class SampleSheet:
@@ -43,9 +43,9 @@ class SampleSheet:
 
             test_globs = {}
             for row in data:
-                if row["adaptors"] not in adaptors:
+                if row["adaptors"] not in ADAPTORS:
                     raise UserWarning(
-                        f"'{row['adaptors']}' not in the list of valid adaptors: {adaptors.keys()}"
+                        f"'{row['adaptors']}' not in the list of valid adaptors: {ADAPTORS.keys()}"
                     )
                 i7i5_split = row["index"].split("-")
                 i7_index = i7i5_split[0]
@@ -74,7 +74,7 @@ class SampleSheet:
                     sample_name,
                     Adaptor(
                         name=row["adaptors"],
-                        adaptors=adaptors,
+                        adaptors=ADAPTORS,
                         i5_index=i5_index,
                         i7_index=i7_index,
                     ),
@@ -108,20 +108,20 @@ class SampleSheet:
         finally:
             csvfile.close()
 
-    def minimum_bc_distance(self):
+    def minimum_bc_distance(self) -> int:
         """Compute the minimum edit distance between all barcodes in samplesheet,
         or within each ONT barcode group.
         """
 
-        ss_by_bc = {}
-        testset = {}
+        ont_bc_to_adaptors = {}
         for entry in self.samplesheet:
-            if entry.ont_barcode in ss_by_bc:
-                ss_by_bc[entry.ont_barcode].append(entry.adaptor)
+            if entry.ont_barcode in ont_bc_to_adaptors:
+                ont_bc_to_adaptors[entry.ont_barcode].append(entry.adaptor)
             else:
-                ss_by_bc[entry.ont_barcode] = [entry.adaptor]
+                ont_bc_to_adaptors[entry.ont_barcode] = [entry.adaptor]
 
-        for ont_barcode, adaptors in ss_by_bc.items():
+        testset = {}
+        for ont_barcode, adaptors in ont_bc_to_adaptors.items():
             testset[ont_barcode] = []
             for adaptor in adaptors:
                 if adaptor.i5.has_index():
@@ -129,23 +129,24 @@ class SampleSheet:
                 else:
                     testset[ont_barcode].append(adaptor.i7.index)
 
-        fq_distances = []
+        min_distances_all_barcodes = []
         for ont_barcode, adaptors in testset.items():
-            distances = []
+            distances_within_barcode = []
             if len(adaptors) == 1:
-                distances = [len(adaptors[0])]
+                # If there is only one adaptor in the group, the distance is simply the length of the adaptor
+                distances_within_barcode = [len(adaptors[0])]
             else:
                 for a, b in [i for i in combinations(adaptors, 2)]:
-                    dist = lev.distance(a, b)
+                    distance_this_pair = lev.distance(a, b)
                     assert (
-                        dist > 0
+                        distance_this_pair > 0
                     ), f"""There is one or more identical barcodes in the input samplesheet.
                         First one found: {a}. If these exist in different ONT barcodes, please specify the --ont_barcodes flag."""
-                    distances.append(dist)
-            fq_distances.append(min(distances))
-        return min(fq_distances)
+                    distances_within_barcode.append(distance_this_pair)
+            min_distances_all_barcodes.append(min(distances_within_barcode))
+        return min(min_distances_all_barcodes)
 
-    def get_fastastring(self, adaptor_name=None):
+    def get_fastastring(self, adaptor_name: str = None) -> str:
         fastas = {}
         for entry in self.samplesheet:
             if entry.adaptor.name == adaptor_name or adaptor_name is None:
