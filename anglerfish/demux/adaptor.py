@@ -50,6 +50,11 @@ class Adaptor:
         self.i7_umi_after: int = self.i7.len_umi_after_index
 
     def get_i5_mask(self, insert_Ns: bool = True) -> str:
+        """Get the i5 mask of the adaptor.
+
+        insert_Ns = True  -> Returns the i7 sequence with index and UMI tokens replaced with Ns of the correct length
+        insert_Ns = False -> Returns the i7 sequence without index and UMI tokens
+        """
         index_length = (
             len(self.i5_index) if self.i5_index is not None and insert_Ns else 0
         )
@@ -71,6 +76,11 @@ class Adaptor:
             return self.i5.sequence_token
 
     def get_i7_mask(self, insert_Ns: bool = True) -> str:
+        """Get the i7 mask of the adaptor.
+
+        insert_Ns = True  -> Returns the i7 sequence with index and UMI tokens replaced with Ns of the correct length
+        insert_Ns = False -> Returns the i7 sequence without index and UMI tokens
+        """
         index_length = (
             len(self.i7_index) if self.i7_index is not None and insert_Ns else 0
         )
