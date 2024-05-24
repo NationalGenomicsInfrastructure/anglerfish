@@ -18,17 +18,18 @@ class Adaptor:
     def __init__(
         self,
         name: str,
-        i5_token: str,
-        i7_token: str,
+        adaptors: dict,
         i7_index: str | None = None,
         i5_index: str | None = None,
     ):
         self.name: str = name
+        self.i5_token = (adaptors[name]["i5"],)
+        self.i7_token = (adaptors[name]["i7"],)
         self.index_token: str = INDEX_TOKEN
 
         # i5 attributes
         self.i5 = AdaptorPart(
-            sequence_token=i5_token,
+            sequence_token=self.i5_token,
             name=name,
             index=i5_index,
         )
@@ -39,7 +40,7 @@ class Adaptor:
 
         # i7 attributes
         self.i7 = AdaptorPart(
-            sequence_token=i7_token,
+            sequence_token=self.i7_token,
             name=name,
             index=i7_index,
         )
@@ -183,11 +184,5 @@ def load_adaptors(raw: bool = False) -> list[Adaptor] | dict:
     else:
         adaptors = []
         for adaptor_name in adaptors_dict:
-            adaptors.append(
-                Adaptor(
-                    name=adaptor_name,
-                    i5_token=adaptors_dict[adaptor_name]["i5"],
-                    i7_token=adaptors_dict[adaptor_name]["i7"],
-                )
-            )
+            adaptors.append(Adaptor(name=adaptor_name, adaptors=adaptors_dict))
         return adaptors
