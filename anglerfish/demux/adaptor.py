@@ -117,7 +117,7 @@ class AdaptorPart:
                 self.len_before_index = len(INDEX_TOKEN.split(self.sequence_token)[0])
                 self.len_after_index = len(UMI_TOKEN.split(self.sequence_token)[-1])
 
-            elif INDEX_TOKEN + UMI_TOKEN in self.sequence_token:
+            elif UMI_TOKEN + INDEX_TOKEN in self.sequence_token:
                 # The index region is UMI+INDEX
                 self.len_umi_before_index = int(
                     re.search(UMI_LENGTH_TOKEN, self.umi_token[0]).group(1)
