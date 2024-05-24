@@ -102,6 +102,29 @@ class Adaptor:
             return self.i7.sequence_token
 
     def get_fastastring(self, insert_Ns: bool = True) -> str:
+        """Create fasta text entries for the i5 and i7 adaptors.
+
+        Example:
+
+            An Adaptor object with the name "truseq_dual" and the following properties:
+                - i5 sequence token 'AAAA<N>TTTT', index length 4
+                - i7 sequence token 'GGGG<N><U8>CCCC', index length 4, UMI length 8
+
+            get_fastastring(insert_Ns=True) -> '''
+                >truseq_dual_i5
+                AAAANNNNTTTT
+                >truseq_dual_i7
+                GGGGNNNNNNNNNNNNCCCC
+            '''
+
+            get_fastastring(insert_Ns=False) -> '''
+                >truseq_dual_i5
+                AAAATTTT
+                >truseq_dual_i7
+                GGGGCCCC
+            '''
+
+        """
         fasta_i5 = f">{self.name}_i5\n{self.get_i5_mask(insert_Ns)}\n"
         fasta_i7 = f">{self.name}_i7\n{self.get_i7_mask(insert_Ns)}\n"
         return fasta_i5 + fasta_i7
