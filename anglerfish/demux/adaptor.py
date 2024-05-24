@@ -50,8 +50,11 @@ class Adaptor:
         self.i7_umi_after: int = self.i7.len_umi_after_index
 
     def get_i5_mask(self, insert_Ns: bool = True) -> str:
-        ilen = len(self.i5_index) if self.i5_index is not None and insert_Ns else 0
-        ulen = max(self.i5_umi_after, self.i5_umi_before) if insert_Ns else 0
+        index_length = (
+            len(self.i5_index) if self.i5_index is not None and insert_Ns else 0
+        )
+        umi_length = max(self.i5_umi_after, self.i5_umi_before) if insert_Ns else 0
+
         # Test if the index is specified in the adaptor sequence when it shouldn't be
         if (
             has_match(INDEX_TOKEN, self.i5.sequence_token)
@@ -59,16 +62,20 @@ class Adaptor:
             and insert_Ns
         ):
             raise UserWarning("Adaptor has i5 but no sequence was specified")
+
         if self.i5_index is not None or not insert_Ns:
-            new_i5 = re.sub(INDEX_TOKEN, "N" * ilen, self.i5.sequence_token)
-            new_i5 = re.sub(UMI_TOKEN, "N" * ulen, new_i5)
+            new_i5 = re.sub(INDEX_TOKEN, "N" * index_length, self.i5.sequence_token)
+            new_i5 = re.sub(UMI_TOKEN, "N" * umi_length, new_i5)
             return new_i5
         else:
             return self.i5.sequence_token
 
     def get_i7_mask(self, insert_Ns: bool = True) -> str:
-        ilen = len(self.i7_index) if self.i7_index is not None and insert_Ns else 0
-        ulen = max(self.i7_umi_after, self.i7_umi_before) if insert_Ns else 0
+        index_length = (
+            len(self.i7_index) if self.i7_index is not None and insert_Ns else 0
+        )
+        umi_length = max(self.i7_umi_after, self.i7_umi_before) if insert_Ns else 0
+
         # Test if the index is specified in the adaptor sequence when it shouldn't be
         if (
             has_match(INDEX_TOKEN, self.i7.sequence_token)
@@ -76,9 +83,10 @@ class Adaptor:
             and insert_Ns
         ):
             raise UserWarning("Adaptor has i7 but no sequence was specified")
+
         if self.i7_index is not None or not insert_Ns:
-            new_i7 = re.sub(INDEX_TOKEN, "N" * ilen, self.i7.sequence_token)
-            new_i7 = re.sub(UMI_TOKEN, "N" * ulen, new_i7)
+            new_i7 = re.sub(INDEX_TOKEN, "N" * index_length, self.i7.sequence_token)
+            new_i7 = re.sub(UMI_TOKEN, "N" * umi_length, new_i7)
             return new_i7
         else:
             return self.i7.sequence_token
