@@ -23,31 +23,13 @@ class Adaptor:
         i5_index: str | None = None,
     ):
         self.name: str = name
-        self.i5_token = (adaptors[name]["i5"],)
-        self.i7_token = (adaptors[name]["i7"],)
         self.index_token: str = INDEX_TOKEN
-
-        # i5 attributes
         self.i5 = AdaptorPart(
-            sequence_token=self.i5_token,
-            name=name,
-            index=i5_index,
+            sequence_token=adaptors[name]["i5"], name=name, index=i5_index
         )
-        self.i5_index: str | None = i5_index
-        self.i5_umi: str | None = self.i5.umi_token
-        self.i5_umi_before: int = self.i5.len_umi_before_index
-        self.i5_umi_after: int = self.i5.len_umi_after_index
-
-        # i7 attributes
         self.i7 = AdaptorPart(
-            sequence_token=self.i7_token,
-            name=name,
-            index=i7_index,
+            sequence_token=adaptors[name]["i7"], name=name, index=i7_index
         )
-        self.i7_index: str | None = i7_index
-        self.i7_umi: str | None = self.i7.umi_token
-        self.i7_umi_before: int = self.i7.len_umi_before_index
-        self.i7_umi_after: int = self.i7.len_umi_after_index
 
     def get_i5_mask(self, insert_Ns: bool = True) -> str:
         """Get the i5 mask of the adaptor.
@@ -56,19 +38,23 @@ class Adaptor:
         insert_Ns = False -> Returns the i7 sequence without index and UMI tokens
         """
         index_length = (
-            len(self.i5_index) if self.i5_index is not None and insert_Ns else 0
+            len(self.i5.index) if self.i5.index is not None and insert_Ns else 0
         )
-        umi_length = max(self.i5_umi_after, self.i5_umi_before) if insert_Ns else 0
+        umi_length = (
+            max(self.i5.len_umi_after_index, self.i5.len_umi_before_index)
+            if insert_Ns
+            else 0
+        )
 
         # Test if the index is specified in the adaptor sequence when it shouldn't be
         if (
             has_match(INDEX_TOKEN, self.i5.sequence_token)
-            and self.i5_index is None
+            and self.i5.index is None
             and insert_Ns
         ):
             raise UserWarning("Adaptor has i5 but no sequence was specified")
 
-        if self.i5_index is not None or not insert_Ns:
+        if self.i5.index is not None or not insert_Ns:
             new_i5 = re.sub(INDEX_TOKEN, "N" * index_length, self.i5.sequence_token)
             new_i5 = re.sub(UMI_TOKEN, "N" * umi_length, new_i5)
             return new_i5
@@ -82,19 +68,23 @@ class Adaptor:
         insert_Ns = False -> Returns the i7 sequence without index and UMI tokens
         """
         index_length = (
-            len(self.i7_index) if self.i7_index is not None and insert_Ns else 0
+            len(self.i7.index) if self.i7.index is not None and insert_Ns else 0
         )
-        umi_length = max(self.i7_umi_after, self.i7_umi_before) if insert_Ns else 0
+        umi_length = (
+            max(self.i7.len_umi_after_index, self.i7.len_umi_before_index)
+            if insert_Ns
+            else 0
+        )
 
         # Test if the index is specified in the adaptor sequence when it shouldn't be
         if (
             has_match(INDEX_TOKEN, self.i7.sequence_token)
-            and self.i7_index is None
+            and self.i7.index is None
             and insert_Ns
         ):
             raise UserWarning("Adaptor has i7 but no sequence was specified")
 
-        if self.i7_index is not None or not insert_Ns:
+        if self.i7.index is not None or not insert_Ns:
             new_i7 = re.sub(INDEX_TOKEN, "N" * index_length, self.i7.sequence_token)
             new_i7 = re.sub(UMI_TOKEN, "N" * umi_length, new_i7)
             return new_i7
@@ -144,28 +134,32 @@ class AdaptorPart:
 
         # Parse UMI, if any
         umi_token_matches = re.findall(UMI_TOKEN, self.sequence_token)
-        if umi_token_matches > 0:
+        if len(umi_token_matches) > 0:
             assert (
                 umi_token_matches == 1
             ), f"Multiple UMIs found in {self.name}, not supported."
             self.umi_token = umi_token_matches[0]
 
+            import ipdb
+
+            ipdb.set_trace()
+
+            self.len_umi = int(re.search(UMI_LENGTH_TOKEN, self.umi_token).group(1))
+
             # Check if UMI is before or after index
             if INDEX_TOKEN + UMI_TOKEN in self.sequence_token:
                 # The index region is INDEX+UMI
-                self.len_umi_after_index = int(
-                    re.search(UMI_LENGTH_TOKEN, self.umi_token).group(1)
+                self.len_umi_before_index = len(
+                    INDEX_TOKEN.split(self.sequence_token)[0]
                 )
-                self.len_before_index = len(INDEX_TOKEN.split(self.sequence_token)[0])
-                self.len_after_index = len(UMI_TOKEN.split(self.sequence_token)[-1])
+                self.len_umi_after_index = len(UMI_TOKEN.split(self.sequence_token)[-1])
 
             elif UMI_TOKEN + INDEX_TOKEN in self.sequence_token:
                 # The index region is UMI+INDEX
-                self.len_umi_before_index = int(
-                    re.search(UMI_LENGTH_TOKEN, self.umi_token[0]).group(1)
+                self.len_umi_before_index = len(UMI_TOKEN.split(self.sequence_token)[0])
+                self.len_umi_after_index = len(
+                    INDEX_TOKEN.split(self.sequence_token)[-1]
                 )
-                self.len_before_index = len(UMI_TOKEN.split(self.sequence_token)[0])
-                self.len_after_index = len(INDEX_TOKEN.split(self.sequence_token)[-1])
 
             else:
                 raise UserWarning(
@@ -174,8 +168,8 @@ class AdaptorPart:
 
         else:
             self.umi_token = None
-            self.len_before_index = len(INDEX_TOKEN.split(self.sequence_token)[0])
-            self.len_after_index = len(INDEX_TOKEN.split(self.sequence_token)[-1])
+            self.len_umi_before_index = len(INDEX_TOKEN.split(self.sequence_token)[0])
+            self.len_umi_after_index = len(INDEX_TOKEN.split(self.sequence_token)[-1])
 
 
 def has_match(pattern: re.Pattern, query: str) -> bool:

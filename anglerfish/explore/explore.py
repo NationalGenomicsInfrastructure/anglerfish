@@ -104,7 +104,7 @@ def run_explore(
         for adaptor_end_name, adaptor_end in zip(
             ["i5", "i7"], [adaptor.i5, adaptor.i7]
         ):
-            if adaptor_end.has_index():
+            if adaptor_end.has_index:
                 # Alignment thresholds
                 before_thres = round(
                     adaptor_end.len_before_index_region() * good_hit_threshold
@@ -176,7 +176,7 @@ def run_explore(
             ["i5", "i7"], [adaptor.i5, adaptor.i7]
         ):
             df_good_hits = entries[adaptor.name][adaptor_end_name]
-            if adaptor_end.has_index():
+            if adaptor_end.has_index:
                 median_insert_length = df_good_hits["insert_len"].median()
                 if median_insert_length > umi_threshold:
                     # Calculate entropies here

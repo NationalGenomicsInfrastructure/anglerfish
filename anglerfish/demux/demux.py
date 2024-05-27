@@ -202,8 +202,8 @@ def cluster_matches(
             fi7, d2 = parse_cs(
                 i7["cs"],
                 i7_seq,
-                adaptor.i7_umi_before,
-                adaptor.i7_umi_after,
+                adaptor.i7.len_umi_before_index,
+                adaptor.i7.len_umi_after_index,
             )
             dists.append(d1 + d2)
 
