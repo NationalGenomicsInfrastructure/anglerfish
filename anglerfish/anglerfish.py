@@ -27,7 +27,7 @@ log = logging.getLogger("anglerfish")
 
 MAX_PROCESSES = 64  # Ought to be enough for anybody
 
-anglerfish_logo = """
+anglerfish_logo = r"""
      ___
    ( )  \ -..__
       _.|~”~~~”…_
