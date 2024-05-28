@@ -97,8 +97,8 @@ class Report:
                 sen_dict = asdict(sentry)
                 if sen_dict["sample_name"] == s_dict["sample_name"]:
                     s_dict["adaptor_name"] = sen_dict["adaptor"].name
-                    s_dict["i7_index"] = sen_dict["adaptor"].i7.index
-                    s_dict["i5_index"] = sen_dict["adaptor"].i5.index
+                    s_dict["i7_index"] = sen_dict["adaptor"].i7.index_seq
+                    s_dict["i5_index"] = sen_dict["adaptor"].i5.index_seq
             out_list.append(s_dict)
         for key, unmatch in self.unmatched_stats.items():
             for unmatch_sample in unmatch:

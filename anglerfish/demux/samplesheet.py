@@ -125,9 +125,9 @@ class SampleSheet:
             testset[ont_barcode] = []
             for adaptor in adaptors:
                 if adaptor.i5.has_index:
-                    testset[ont_barcode].append(adaptor.i5.index + adaptor.i7.index)
+                    testset[ont_barcode].append(adaptor.i5.index_seq + adaptor.i7.index_seq)
                 else:
-                    testset[ont_barcode].append(adaptor.i7.index)
+                    testset[ont_barcode].append(adaptor.i7.index_seq)
 
         min_distances_all_barcodes = []
         for ont_barcode, adaptors in testset.items():
@@ -150,8 +150,8 @@ class SampleSheet:
         fastas = {}
         for entry in self.samplesheet:
             if entry.adaptor.name == adaptor_name or adaptor_name is None:
-                fastas[entry.adaptor.name + "_i7"] = entry.adaptor.get_i7_mask()
-                fastas[entry.adaptor.name + "_i5"] = entry.adaptor.get_i5_mask()
+                fastas[entry.adaptor.name + "_i7"] = entry.adaptor.i7.get_mask()
+                fastas[entry.adaptor.name + "_i5"] = entry.adaptor.i5.get_mask()
 
         assert len(fastas) > 0
 
