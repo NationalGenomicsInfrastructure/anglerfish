@@ -57,14 +57,15 @@ def run_demux(args):
     log.info(f" run uuid {run_uuid}")
     min_distance = ss.minimum_bc_distance()
     if args.max_distance is None:
-        if min_distance > 1:
-            args.max_distance = 2
-        else:
-            args.max_distance = 1
+        # Default: Set the maximum distance for barcode matching to 0, 1 or 2
+        # depending on the smallest detected edit distance between indices in the samplesheet
+        args.max_distance = min(min_distance - 1, 2)
         log.info(f"Using maximum edit distance of {args.max_distance}")
     if args.max_distance >= min_distance:
         log.error(
-            f" Edit distance of barcodes in samplesheet are less than the minimum specified {args.max_distance}>={min_distance}"
+            f" The maximum allowed edit distance for barcode matching (={args.max_distance})"
+            + f"is greater than the smallest detected edit distance between indices in samplesheet (={min_distance})"
+            + ", which will result in ambiguous matches."
         )
         exit()
     log.debug(f"Samplesheet bc_dist == {min_distance}")
