@@ -140,10 +140,6 @@ class AdaptorPart:
             ), f"Multiple UMIs found in {self.name}, not supported."
             self.umi_token = umi_token_matches[0]
 
-            import ipdb
-
-            ipdb.set_trace()
-
             self.len_umi = int(re.search(UMI_LENGTH_TOKEN, self.umi_token).group(1))
 
             # Check if UMI is before or after index
