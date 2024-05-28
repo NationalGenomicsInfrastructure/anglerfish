@@ -139,7 +139,9 @@ class AdaptorPart:
         insert_Ns = True  -> Returns the sequence with index and UMI tokens replaced with Ns of the correct length
         insert_Ns = False -> Returns the sequence without index and UMI tokens
         """
-        index_length = len(self.index_seq) if self.index_seq is not None and insert_Ns else 0
+        index_length = (
+            len(self.index_seq) if self.index_seq is not None and insert_Ns else 0
+        )
         umi_length = (
             max(self.len_umi_after_index, self.len_umi_before_index) if insert_Ns else 0
         )

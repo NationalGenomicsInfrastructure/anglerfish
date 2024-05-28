@@ -125,7 +125,9 @@ class SampleSheet:
             testset[ont_barcode] = []
             for adaptor in adaptors:
                 if adaptor.i5.has_index:
-                    testset[ont_barcode].append(adaptor.i5.index_seq + adaptor.i7.index_seq)
+                    testset[ont_barcode].append(
+                        adaptor.i5.index_seq + adaptor.i7.index_seq
+                    )
                 else:
                     testset[ont_barcode].append(adaptor.i7.index_seq)
 

@@ -106,12 +106,8 @@ def run_explore(
         ):
             if adaptor_end.has_index:
                 # Alignment thresholds
-                before_thres = round(
-                    adaptor_end.len_before_index * good_hit_threshold
-                )
-                after_thres = round(
-                    adaptor_end.len_after_index * good_hit_threshold
-                )
+                before_thres = round(adaptor_end.len_before_index * good_hit_threshold)
+                after_thres = round(adaptor_end.len_after_index * good_hit_threshold)
                 insert_thres_low = insert_thres_low
                 insert_thres_high = insert_thres_high
 
@@ -139,10 +135,7 @@ def run_explore(
                 )
 
                 thres = round(
-                    (
-                        adaptor_end.len_before_index
-                        + adaptor_end.len_after_index
-                    )
+                    (adaptor_end.len_before_index + adaptor_end.len_after_index)
                     * good_hit_threshold
                 )
                 df_good_hits = df_good_hits[df_good_hits["match_1_len"] >= thres]
