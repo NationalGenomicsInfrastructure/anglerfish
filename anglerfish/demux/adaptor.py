@@ -136,7 +136,7 @@ class AdaptorPart:
         umi_token_matches = re.findall(UMI_TOKEN, self.sequence_token)
         if len(umi_token_matches) > 0:
             assert (
-                umi_token_matches == 1
+                len(umi_token_matches) == 1
             ), f"Multiple UMIs found in {self.name}, not supported."
             self.umi_token = umi_token_matches[0]
 
