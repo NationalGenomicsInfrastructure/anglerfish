@@ -64,7 +64,6 @@ class AdaptorPart:
 
     def __init__(self, sequence_token: str, name: str, index_seq: str | None):
         # Assign attributes from args
-        print(name, sequence_token, index_seq)
         self.sequence_token: str = sequence_token
         self.name: str = name
         self.index_seq: str | None = index_seq
@@ -133,14 +132,13 @@ class AdaptorPart:
             self.len_umi_before_index = 0
             self.len_umi_after_index = 0
             self.len_before_index = len(split_by_index[0])
-            self.len_after_index = len(split_by_index[1])
+            self.len_after_index = len(split_by_index[-1])
 
         elif not self.has_index and self.has_umi:
             # No index, UMI
-            self.len_umi_before_index = None
-            self.len_umi_after_index = None
-            self.len_before_index = len(split_by_index[0])
-            self.len_after_index = len(split_by_index[1])
+            raise UserWarning(
+                f"Adaptor {self.name} has UMI but no index. This is not supported."
+            )
 
         else:
             # No index, no UMI
@@ -148,9 +146,6 @@ class AdaptorPart:
             self.len_umi_after_index = None
             self.len_before_index = None
             self.len_after_index = None
-
-        # Sanity check
-        print(self.__dict__)
 
     def get_mask(self, insert_Ns: bool = True) -> str:
         """Get the mask of the adaptor part.

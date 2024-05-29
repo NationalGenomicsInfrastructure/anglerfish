@@ -277,7 +277,8 @@ def run_demux(args):
             sample_dists = [
                 (
                     lev.distance(
-                        i[0], f"{x.adaptor.i7.index_seq}+{x.adaptor.i5.index_seq}".lower()
+                        i[0],
+                        f"{x.adaptor.i7.index_seq}+{x.adaptor.i5.index_seq}".lower(),
                     ),
                     x.sample_name,
                 )
