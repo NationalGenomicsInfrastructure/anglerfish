@@ -9,6 +9,7 @@ import uuid
 from collections import Counter
 from itertools import groupby
 
+import Levenshtein as lev
 import numpy as np
 import pkg_resources
 
@@ -47,7 +48,6 @@ def run_demux(args):
     if args.debug:
         log.setLevel(logging.DEBUG)
     run_uuid = str(uuid.uuid4())
-    os.mkdir(args.out_fastq)
     ss = SampleSheet(args.samplesheet, args.ont_barcodes)
     version = pkg_resources.get_distribution("bio-anglerfish").version
     report = Report(args.run_name, run_uuid, version)
@@ -103,7 +103,12 @@ def run_demux(args):
         adaptors_sorted[(entry.adaptor.name, entry.ont_barcode)].append(
             (entry.sample_name, entry.adaptor, os.path.abspath(entry.fastq))
         )
-
+    if os.path.exists(args.out_fastq):
+        raise FileExistsError(
+            f"Output folder '{args.out_fastq}' already exists. Please remove it or specify another --run_name"
+        )
+    else:
+        os.mkdir(args.out_fastq)
     out_fastqs = []
     for key, sample in adaptors_sorted.items():
         adaptor_name, ont_barcode = key
@@ -205,6 +210,7 @@ def run_demux(args):
                     f" Lenient mode: Reverse complementing {best_flip} index for adaptor {adaptor_name} found at least {args.lenient_factor} times more matches"
                 )
                 no_matches, matches = flipped[best_flip]
+                flipped_i7, flipped_i5 = flips[best_flip].values()
             else:
                 log.info(
                     f" Lenient mode: using original index orientation for {adaptor_name}"
@@ -262,11 +268,41 @@ def run_demux(args):
 
         # Top unmatched indexes
         nomatch_count = Counter([x[3] for x in no_matches])
-        if args.max_unknowns is None:
+        if args.max_unknowns == 0:
             args.max_unknowns = len([sample for sample in ss]) + 10
-        report.add_unmatched_stat(
-            nomatch_count.most_common(args.max_unknowns), ont_barcode, adaptor_name
-        )
+
+        # We search for the closest sample in the samplesheet to the list of unknowns
+        top_unknowns = []
+        for i in nomatch_count.most_common(args.max_unknowns):
+            sample_dists = [
+                (
+                    lev.distance(
+                        i[0], f"{x.adaptor.i7_index}+{x.adaptor.i5_index}".lower()
+                    ),
+                    x.sample_name,
+                )
+                for x in ss
+            ]
+            closest_sample = min(sample_dists, key=lambda x: x[0])
+            # If the distance is more than half the index length, we remove it
+            if closest_sample[0] >= (len(i[0]) / 2) + 1:
+                closest_sample = (closest_sample[0], None)
+            else:
+                # We might have two samples with the same distance
+                all_min = [
+                    x[1]
+                    for x in sample_dists
+                    if x[0] == closest_sample[0] and x[1] != closest_sample[1]
+                ]
+                # This list might be too long, so we truncate it
+                if len(all_min) > 4:
+                    all_min = all_min[:4]
+                    all_min.append("...")
+                if all_min:
+                    closest_sample = (closest_sample[0], ";".join(all_min))
+
+            top_unknowns.append([i[0], i[1], closest_sample[1]])
+        report.add_unmatched_stat(top_unknowns, ont_barcode, adaptor_name)
 
     # Check if there were samples in the samplesheet without adaptor alignments and add them to report
     for entry in ss:

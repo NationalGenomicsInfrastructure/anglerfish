@@ -271,6 +271,9 @@ def run(
     )
     utcnow = dt.datetime.now(dt.timezone.utc)
     runname = utcnow.strftime(f"{args.run_name}_%Y_%m_%d_%H%M%S")
+    if run_name != "anglerfish":
+        runname = args.run_name
+
     assert os.path.exists(args.out_fastq), f"Output folder '{args.out_fastq}' not found"
     assert os.path.exists(
         args.samplesheet

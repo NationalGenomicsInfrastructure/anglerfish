@@ -8,7 +8,7 @@ log = logging.getLogger("anglerfish")
 
 
 class Report:
-    unmatch_header = ["index", "num_reads", "ont_barcode"]
+    unmatch_header = ["index", "num_reads", "ont_barcode", "closest_match"]
 
     def __init__(self, run_name, uuid, version):
         self.run_name = run_name
@@ -44,8 +44,8 @@ class Report:
             uhead = getattr(Report, "unmatch_header")
             f.write(f"\n{chr(9).join(uhead)}\n")  # chr(9) = tab
             for key, unmatch in self.unmatched_stats.items():
-                for idx, mnum in unmatch:
-                    f.write(f"{idx}\t{mnum}\t{key[0]}\n")
+                for idx, mnum, closest in unmatch:
+                    f.write(f"{idx}\t{mnum}\t{key[0]}\t{closest}\n")
         log.debug(
             f"Wrote anglerfish_stats.txt to {outdir}, size: {os.path.getsize(os.path.join(outdir, 'anglerfish_stats.txt'))} bytes"
         )
@@ -75,9 +75,14 @@ class Report:
                 dict(zip(getattr(SampleStat, "header"), slist))
             )
         for key, unmatch in self.unmatched_stats.items():
-            for idx, mnum in unmatch:
+            for idx, mnum, closest in unmatch:
                 json_out["undetermined"].append(
-                    dict(zip(getattr(Report, "unmatch_header"), [idx, mnum, key[0]]))
+                    dict(
+                        zip(
+                            getattr(Report, "unmatch_header"),
+                            [idx, mnum, key[0], closest],
+                        )
+                    )
                 )
         with open(os.path.join(outdir, "anglerfish_stats.json"), "w") as f:
             f.write(json.dumps(json_out, indent=2, sort_keys=True))
