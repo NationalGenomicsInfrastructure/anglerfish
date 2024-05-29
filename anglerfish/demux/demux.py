@@ -18,9 +18,9 @@ def parse_cs(cs_string, index, umi_before=0, umi_after=0):
     """
     nt = re.compile(r"\*n([atcg])")
     nts = "".join(re.findall(nt, cs_string))
-    if umi_before > 0:
+    if umi_before is not None and umi_before > 0:
         nts = nts[umi_before:]
-    if umi_after > 0:
+    if umi_after is not None and umi_after > 0:
         nts = nts[:-umi_after]
     # Allow for mismatches
     return nts, lev.distance(index.lower(), nts)
