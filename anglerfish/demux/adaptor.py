@@ -160,11 +160,15 @@ class AdaptorPart:
         """
 
         index_mask_length = (
-            len(self.index_seq) if self.index_seq is not None and insert_Ns and self.has_index else 0
+            len(self.index_seq)
+            if self.index_seq is not None and insert_Ns and self.has_index
+            else 0
         )
 
         umi_mask_length = (
-            max(self.len_umi_after_index, self.len_umi_before_index) if insert_Ns and self.has_umi else 0
+            max(self.len_umi_after_index, self.len_umi_before_index)
+            if insert_Ns and self.has_umi
+            else 0
         )
 
         # Test if the index is specified in the adaptor sequence when it shouldn't be
