@@ -24,10 +24,10 @@ class Adaptor:
     ):
         self.name: str = name
         self.i5 = AdaptorPart(
-            sequence_token=adaptors[name]["i5"], name=name, end="i5", index_seq=i5_index
+            sequence_token=adaptors[name]["i5"], name=name, index_seq=i5_index
         )
         self.i7 = AdaptorPart(
-            sequence_token=adaptors[name]["i7"], name=name, end="i7", index_seq=i7_index
+            sequence_token=adaptors[name]["i7"], name=name, index_seq=i7_index
         )
 
     def get_fastastring(self, insert_Ns: bool = True) -> str:
@@ -62,11 +62,10 @@ class Adaptor:
 class AdaptorPart:
     """This class is used for the i5 or i7 adaptor."""
 
-    def __init__(self, sequence_token: str, name: str, end: str, index_seq: str | None):
+    def __init__(self, sequence_token: str, name: str, index_seq: str | None):
         # Assign attributes from args
         self.sequence_token: str = sequence_token
         self.name: str = name
-        self.end: str = end
         self.index_seq: str = index_seq
 
         # If index
