@@ -64,25 +64,35 @@ class AdaptorPart:
 
     def __init__(self, sequence_token: str, name: str, index_seq: str | None):
         # Assign attributes from args
+        print(name, sequence_token, index_seq)
         self.sequence_token: str = sequence_token
         self.name: str = name
-        self.index_seq: str = index_seq
+        self.index_seq: str | None = index_seq
 
-        # If index
+        # Type declaration of attributes to be assigned
+        self.len_before_index: int | None
+        self.len_after_index: int | None
+        self.len_umi_before_index: int | None
+        self.len_umi_after_index: int | None
+
+        # Index
         if has_match(INDEX_TOKEN, self.sequence_token):
+            split_by_index = re.split(INDEX_TOKEN, self.sequence_token)
+
             self.has_index = True
             self.len_index = len(index_seq) if index_seq else None
+
         else:
             self.has_index = False
             self.len_index = 0
-            self.len_before_index = 0
-            self.len_after_index = 0
 
         # UMI
-        assert (
-            len(re.findall(UMI_TOKEN, self.sequence_token)) <= 1
-        ), f"Multiple UMIs found in {self.name}, not supported."
-        if len(re.findall(UMI_TOKEN, self.sequence_token)) > 0:
+        umi_tokens = re.findall(UMI_TOKEN, self.sequence_token)
+        if len(umi_tokens) > 1:
+            raise UserWarning(
+                f"Found adaptor {self.name} with multiple UMIs. This is not supported."
+            )
+        elif len(umi_tokens) == 1:
             self.has_umi = True
             self.len_umi = int(
                 re.search(UMI_LENGTH_TOKEN, self.sequence_token).group(1)
@@ -90,46 +100,57 @@ class AdaptorPart:
         else:
             self.has_umi = False
             self.len_umi = 0
-            self.len_umi_before_index = 0
-            self.len_umi_after_index = 0
 
+        # Lengths
         if self.has_index and self.has_umi:
-            # Check if UMI is before or after index
-            if re.search(INDEX_TOKEN + UMI_TOKEN, self.sequence_token):
-                # The index region is INDEX+UMI
-                m = re.search(INDEX_TOKEN + UMI_TOKEN, self.sequence_token)
+            # Index and UMI
+            index_umi_match = re.search(INDEX_TOKEN + UMI_TOKEN, self.sequence_token)
+            umi_index_match = re.search(UMI_TOKEN + INDEX_TOKEN, self.sequence_token)
+
+            if index_umi_match:
                 self.len_umi_before_index = 0
                 self.len_umi_after_index = self.len_umi
-                self.len_before_index = len(self.sequence_token[: m.start()])
-                self.len_after_index = (
-                    len(self.sequence_token[m.end() :]) + self.len_umi
+                self.len_before_index = len(
+                    self.sequence_token[: index_umi_match.start()]
                 )
-
-            elif re.search(UMI_TOKEN + INDEX_TOKEN, self.sequence_token):
-                # The index region is UMI+INDEX
-                m = re.search(UMI_TOKEN + INDEX_TOKEN, self.sequence_token)
+                self.len_after_index = (
+                    len(self.sequence_token[index_umi_match.end() :]) + self.len_umi
+                )
+            elif umi_index_match:
                 self.len_umi_before_index = self.len_umi
                 self.len_umi_after_index = 0
                 self.len_before_index = (
-                    len(self.sequence_token[: m.start()]) + self.len_umi
+                    len(self.sequence_token[: umi_index_match.start()]) + self.len_umi
                 )
-                self.len_after_index = len(self.sequence_token[m.end() :])
-
+                self.len_after_index = len(self.sequence_token[umi_index_match.end() :])
             else:
                 raise UserWarning(
                     f"Found adaptor {self.name} with UMI but it does not flank an index. This is not supported."
                 )
+
         elif self.has_index and not self.has_umi:
+            # Index, no UMI
             self.len_umi_before_index = 0
             self.len_umi_after_index = 0
-            self.len_before_index = len(
-                self.sequence_token[
-                    : re.search(INDEX_TOKEN, self.sequence_token).start()
-                ]
-            )
-            self.len_after_index = len(
-                self.sequence_token[re.search(INDEX_TOKEN, self.sequence_token).end() :]
-            )
+            self.len_before_index = len(split_by_index[0])
+            self.len_after_index = len(split_by_index[1])
+
+        elif not self.has_index and self.has_umi:
+            # No index, UMI
+            self.len_umi_before_index = None
+            self.len_umi_after_index = None
+            self.len_before_index = len(split_by_index[0])
+            self.len_after_index = len(split_by_index[1])
+
+        else:
+            # No index, no UMI
+            self.len_umi_before_index = None
+            self.len_umi_after_index = None
+            self.len_before_index = None
+            self.len_after_index = None
+
+        # Sanity check
+        print(self.__dict__)
 
     def get_mask(self, insert_Ns: bool = True) -> str:
         """Get the mask of the adaptor part.
@@ -137,11 +158,13 @@ class AdaptorPart:
         insert_Ns = True  -> Returns the sequence with index and UMI tokens replaced with Ns of the correct length
         insert_Ns = False -> Returns the sequence without index and UMI tokens
         """
-        index_length = (
-            len(self.index_seq) if self.index_seq is not None and insert_Ns else 0
+
+        index_mask_length = (
+            len(self.index_seq) if self.index_seq is not None and insert_Ns and self.has_index else 0
         )
-        umi_length = (
-            max(self.len_umi_after_index, self.len_umi_before_index) if insert_Ns else 0
+
+        umi_mask_length = (
+            max(self.len_umi_after_index, self.len_umi_before_index) if insert_Ns and self.has_umi else 0
         )
 
         # Test if the index is specified in the adaptor sequence when it shouldn't be
@@ -153,8 +176,8 @@ class AdaptorPart:
             raise UserWarning("Adaptor has i5 but no sequence was specified")
 
         if self.index_seq is not None or not insert_Ns:
-            mask = re.sub(INDEX_TOKEN, "N" * index_length, self.sequence_token)
-            mask = re.sub(UMI_TOKEN, "N" * umi_length, mask)
+            mask = re.sub(INDEX_TOKEN, "N" * index_mask_length, self.sequence_token)
+            mask = re.sub(UMI_TOKEN, "N" * umi_mask_length, mask)
             return mask
         else:
             return self.sequence_token
