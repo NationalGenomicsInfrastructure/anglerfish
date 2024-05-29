@@ -23,7 +23,6 @@ class Adaptor:
         i5_index: str | None = None,
     ):
         self.name: str = name
-        self.index_token: str = INDEX_TOKEN
         self.i5 = AdaptorPart(
             sequence_token=adaptors[name]["i5"], name=name, end="i5", index_seq=i5_index
         )
