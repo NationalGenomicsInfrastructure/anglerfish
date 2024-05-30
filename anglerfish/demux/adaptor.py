@@ -149,7 +149,12 @@ class AdaptorPart:
             self.len_before_index = None
             self.len_after_index = None
 
-        self.len_total = len(self.get_mask(insert_Ns=True)) if self.index_seq else None
+        if (
+            self.has_index is True and self.index_seq is not None
+        ) or self.has_index is False:
+            self.len_total = len(self.get_mask(insert_Ns=True))
+        else:
+            self.len_total = None
         self.len_constant = len(self.get_mask(insert_Ns=False))
 
     def get_mask(self, insert_Ns: bool = True) -> str:
