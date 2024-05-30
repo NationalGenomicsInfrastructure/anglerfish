@@ -47,7 +47,11 @@ def test_load_adaptors():
 
 
 class TestAdaptorPart:
-    """Explicit combinatorial testing, ugly but effective and readable."""
+    """Explicit combinatorial testing, ugly but effective and readable.
+    
+    Here-in are contained test cases for a variety of instantiated AdaptorPart objects.
+    All attributes and methods are tested for correctness.
+    """
 
     def test_simple(self):
         adaptor_part = to_test.AdaptorPart(
