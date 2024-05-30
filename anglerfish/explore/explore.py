@@ -134,10 +134,7 @@ def run_explore(
                     match_col_df
                 )
 
-                thres = round(
-                    (adaptor_end.len_before_index + adaptor_end.len_after_index)
-                    * good_hit_threshold
-                )
+                thres = round(adaptor_end.len_constant * good_hit_threshold)
                 df_good_hits = df_good_hits[df_good_hits["match_1_len"] >= thres]
 
                 median_insert_length = None

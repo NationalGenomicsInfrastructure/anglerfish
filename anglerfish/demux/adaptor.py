@@ -68,13 +68,7 @@ class AdaptorPart:
         self.name: str = name
         self.index_seq: str | None = index_seq
 
-        # Type declaration of attributes to be assigned
-        self.len_before_index: int | None
-        self.len_after_index: int | None
-        self.len_umi_before_index: int | None
-        self.len_umi_after_index: int | None
-
-        # Index
+        # Index bool and len
         if has_match(INDEX_TOKEN, self.sequence_token):
             split_by_index = re.split(INDEX_TOKEN, self.sequence_token)
 
@@ -85,7 +79,7 @@ class AdaptorPart:
             self.has_index = False
             self.len_index = 0
 
-        # UMI
+        # UMI bool and len
         umi_tokens = re.findall(UMI_TOKEN, self.sequence_token)
         if len(umi_tokens) > 1:
             raise UserWarning(
@@ -99,6 +93,14 @@ class AdaptorPart:
         else:
             self.has_umi = False
             self.len_umi = 0
+
+        # Type declaration of attributes to be assigned
+        self.len_before_index: int | None
+        self.len_after_index: int | None
+        self.len_umi_before_index: int | None
+        self.len_umi_after_index: int | None
+        self.len_total: int | None
+        self.len_constant: int
 
         # Lengths
         if self.has_index and self.has_umi:
@@ -147,6 +149,9 @@ class AdaptorPart:
             self.len_before_index = None
             self.len_after_index = None
 
+        self.len_total = len(self.get_mask(insert_Ns=True)) if self.index_seq else None
+        self.len_constant = len(self.get_mask(insert_Ns=False))
+
     def get_mask(self, insert_Ns: bool = True) -> str:
         """Get the mask of the adaptor part.
 
@@ -172,7 +177,9 @@ class AdaptorPart:
             and self.index_seq is None
             and insert_Ns
         ):
-            raise UserWarning("Adaptor has i5 but no sequence was specified")
+            raise UserWarning(
+                f"Can't create mask for adaptor '{self.name}' with unspecified index."
+            )
 
         if self.index_seq is not None or not insert_Ns:
             mask = re.sub(INDEX_TOKEN, "N" * index_mask_length, self.sequence_token)
