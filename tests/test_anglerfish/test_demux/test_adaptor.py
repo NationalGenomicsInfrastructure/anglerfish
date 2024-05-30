@@ -41,3 +41,8 @@ def test_load_adaptors():
     assert isinstance(adaptors, list)
     for adaptor in adaptors:
         assert isinstance(adaptor, adaptor_to_test.Adaptor)
+
+    adaptors_raw = adaptor_to_test.load_adaptors(raw = True)
+    assert isinstance(adaptors_raw, dict)
+    for adaptor in adaptors_raw:
+        assert isinstance(adaptors_raw[adaptor], dict)
