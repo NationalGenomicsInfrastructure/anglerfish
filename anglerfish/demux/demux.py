@@ -38,21 +38,16 @@ def run_minimap2(
     """
     cmd = [
         "minimap2",
-        "--cs",
-        "-m8",
-        "-k",
-        "10",
-        "-w",
-        "5",
-        "-A",
-        "6",
-        "-B",
-        str(minimap_b),
-        "-c",
-        "-t",
-        str(threads),
-        index_file,
+        "--cs",  # Output the cs tag (short)
+        "-c",  # Output cigar string in .paf
+        *["-A", "6"],  # Matching score
+        *["-B", str(minimap_b)],  # Mismatch penalty
+        *["-k", "10"],  # k-mer size
+        *["-m", "8"],  # Minimal chaining score
+        *["-t", str(threads)],  # Number of threads
+        *["-w", "5"],  # Minimizer window size
         fastq_in,
+        index_file,
     ]
 
     run_log = f"{output_paf}.log"
@@ -63,7 +58,7 @@ def run_minimap2(
 
 def parse_paf_lines(
     paf: os.PathLike, min_qual: int = 1, complex_identifier: bool = False
-) -> dict[dict]:
+) -> dict[str, list[dict]]:
     """
     Read and parse one paf alignment lines.
     Returns a dict with the import values for later use.

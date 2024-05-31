@@ -71,13 +71,16 @@ def run_explore(
     adaptors_included = []
     for adaptor, aln_path in alignments:
         log.info(f"Parsing {adaptor.name}")
-        aln_dict_with_lists: dict[dict] = parse_paf_lines(
+        aln_dict_with_lists: dict[str, list[dict]] = parse_paf_lines(
             aln_path, complex_identifier=True
         )
 
         # Choose only the highest scoring alignment for each combination of read, adaptor end and strand
         aln_dict = dict(
-            [(k, max(v, key=lambda x: x["q"])) for k, v in aln_dict_with_lists.items()]
+            [
+                (aln_name, max(aln_dicts, key=lambda x: x["q"]))
+                for aln_name, aln_dicts in aln_dict_with_lists.items()
+            ]
         )
 
         df = pd.DataFrame.from_dict(aln_dict, orient="index")
