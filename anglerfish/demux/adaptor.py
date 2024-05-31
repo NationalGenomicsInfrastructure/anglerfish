@@ -76,6 +76,10 @@ class AdaptorPart:
             self.len_index = len(index_seq) if index_seq else None
 
         else:
+            if self.index_seq is not None:
+                raise UserWarning(
+                    "Index sequence specified, but no index token found in adaptor sequence."
+                )
             self.has_index = False
             self.len_index = 0
 

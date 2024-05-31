@@ -48,10 +48,21 @@ def test_load_adaptors():
 
 class TestAdaptorPart:
     """Explicit combinatorial testing, ugly but effective and readable.
-    
+
     Here-in are contained test cases for a variety of instantiated AdaptorPart objects.
     All attributes and methods are tested for correctness.
     """
+
+    def test_should_fail(self):
+        """Specifying an index on an adaptor without an index should raise a UserWarning."""
+        try:
+            to_test.AdaptorPart(
+                sequence_token="ATCG", name="should_fail", index_seq="AAA"
+            )
+        except UserWarning as e:
+            assert e
+        else:
+            raise AssertionError("UserWarning not raised")
 
     def test_simple(self):
         adaptor_part = to_test.AdaptorPart(
@@ -183,6 +194,43 @@ class TestAdaptorPart:
         assert adaptor_part.get_mask(insert_Ns=True) == "ATCGNNNNNNNNATC"
         assert adaptor_part.get_mask(insert_Ns=False) == "ATCGATC"
 
+
 class TestAdaptor:
-    
-    raise AssertionError("WIP")
+    def test_adaptor(self):
+        adaptors = {
+            "simple_and_index_umi": {
+                "i5": "AAA",
+                "i7": "AAA<N><U4>CCC",
+            }
+        }
+
+        adaptor = to_test.Adaptor(
+            "simple_and_index_umi", adaptors, i5_index=None, i7_index="TTT"
+        )
+        assert adaptor.name == "simple_and_index_umi"
+        assert isinstance(adaptor.i5, to_test.AdaptorPart)
+        assert isinstance(adaptor.i7, to_test.AdaptorPart)
+        assert (
+            adaptor.get_fastastring(insert_Ns=True)
+            == "\n".join(
+                [
+                    ">simple_and_index_umi_i5",
+                    "AAA",
+                    ">simple_and_index_umi_i7",
+                    "AAANNNNNNNCCC",
+                ]
+            )
+            + "\n"
+        )
+        assert (
+            adaptor.get_fastastring(insert_Ns=False)
+            == "\n".join(
+                [
+                    ">simple_and_index_umi_i5",
+                    "AAA",
+                    ">simple_and_index_umi_i7",
+                    "AAACCC",
+                ]
+            )
+            + "\n"
+        )
