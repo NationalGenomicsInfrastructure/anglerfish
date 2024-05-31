@@ -26,7 +26,7 @@ def parse_cs(cs_string, index, umi_before=0, umi_after=0):
     return nts, lev.distance(index.lower(), nts)
 
 
-def run_minimap2(fastq_in, indexfile, output_paf, threads, minimap_b=1):
+def run_minimap2(fastq_in, index_file, output_paf, threads, minimap_b=1):
     """
     Runs Minimap2
     """
@@ -45,7 +45,7 @@ def run_minimap2(fastq_in, indexfile, output_paf, threads, minimap_b=1):
         "-c",
         "-t",
         str(threads),
-        indexfile,
+        index_file,
         fastq_in,
     ]
 

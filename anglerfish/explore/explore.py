@@ -4,7 +4,7 @@ import uuid
 
 import pandas as pd
 
-from anglerfish.demux.adaptor import load_adaptors
+from anglerfish.demux.adaptor import Adaptor, load_adaptors
 from anglerfish.demux.demux import parse_paf_lines, run_minimap2
 from anglerfish.explore.entropy import calculate_relative_entropy
 
@@ -13,17 +13,17 @@ log = logging.getLogger("explore")
 
 
 def run_explore(
-    fastq,
-    outdir,
-    threads,
-    use_existing,
-    good_hit_threshold,
-    insert_thres_low,
-    insert_thres_high,
-    minimap_b,
-    min_hits_per_adaptor,
-    umi_threshold,
-    kmer_length,
+    fastq: os.PathLike,
+    outdir: os.PathLike,
+    threads: int,
+    use_existing: bool,
+    good_hit_threshold: float,
+    insert_thres_low: int,
+    insert_thres_high: int,
+    minimap_b: int,
+    min_hits_per_adaptor: int,
+    umi_threshold: float,
+    kmer_length: int,
 ):
     # Setup a run directory
     run_uuid = str(uuid.uuid4())
@@ -42,7 +42,7 @@ def run_explore(
     log.info("Running anglerfish explore")
     log.info(f"Run uuid {run_uuid}")
 
-    adaptors = load_adaptors()
+    adaptors: list[Adaptor] = load_adaptors()
     alignments = []
 
     # Map all reads against all adaptors
@@ -60,7 +60,13 @@ def run_explore(
             f.write(adaptor.get_fastastring(insert_Ns=False))
 
         log.info(f"Aligning {adaptor_name}")
-        run_minimap2(fastq, adaptor_path, aln_path, threads, minimap_b)
+        run_minimap2(
+            fastq_in=fastq,
+            index_file=adaptor_path,
+            output_paf=aln_path,
+            threads=threads,
+            minimap_b=minimap_b,
+        )
 
     # Parse alignments
     entries = {}
