@@ -26,7 +26,13 @@ def parse_cs(cs_string, index, umi_before=0, umi_after=0):
     return nts, lev.distance(index.lower(), nts)
 
 
-def run_minimap2(fastq_in, index_file, output_paf, threads, minimap_b=1):
+def run_minimap2(
+    fastq_in: os.PathLike,
+    index_file: os.PathLike,
+    output_paf: os.PathLike,
+    threads: int,
+    minimap_b: int = 1,
+):
     """
     Runs Minimap2
     """
@@ -55,42 +61,47 @@ def run_minimap2(fastq_in, index_file, output_paf, threads, minimap_b=1):
         subprocess.run("sort", stdin=p1.stdout, stdout=ofile, check=True)
 
 
-def parse_paf_lines(paf, min_qual=1, complex_identifier=False):
+def parse_paf_lines(
+    paf: os.PathLike, min_qual: int = 1, complex_identifier: bool = False
+) -> dict[dict]:
     """
     Read and parse one paf alignment lines.
-    Returns a dict with the import values for later use
+    Returns a dict with the import values for later use.
+
     If complex_identifier is True (default False), the keys will be on the form
-    "{read}_{i5_or_i7}_{strand_str}"
+    "{read}_{i5_or_i7}_{strand_str}".
     """
     entries = {}
     with open(paf) as paf:
         for paf_line in paf:
-            aln = paf_line.split()
+            paf_cols = paf_line.split()
             try:
                 # TODO: objectify this
                 entry = {
-                    "read": aln[0],
-                    "adapter": aln[5],
-                    "rlen": int(aln[1]),  # read length
-                    "rstart": int(aln[2]),  # start alignment on read
-                    "rend": int(aln[3]),  # end alignment on read
-                    "strand": aln[4],
-                    "cg": aln[-2],  # cigar string
-                    "cs": aln[-1],  # cs string
-                    "q": int(aln[11]),  # Q score
+                    "read": paf_cols[0],
+                    "adapter": paf_cols[5],
+                    "rlen": int(paf_cols[1]),  # read length
+                    "rstart": int(paf_cols[2]),  # start alignment on read
+                    "rend": int(paf_cols[3]),  # end alignment on read
+                    "strand": paf_cols[4],
+                    "cg": paf_cols[-2],  # cigar string
+                    "cs": paf_cols[-1],  # cs string
+                    "q": int(paf_cols[11]),  # Q score
                     "iseq": None,
                     "sample": None,
                 }
                 read = entry["read"]
+
                 if complex_identifier:
                     i5_or_i7 = entry["adapter"].split("_")[-1]
                     if entry["strand"] == "+":
                         strand_str = "positive"
                     else:
                         strand_str = "negative"
-                    ix = f"{read}_{i5_or_i7}_{strand_str}"
+                    key = f"{read}_{i5_or_i7}_{strand_str}"
                 else:
-                    ix = read
+                    key = read
+
             except IndexError:
                 log.debug(f"Could not find all paf columns: {read}")
                 continue
@@ -99,10 +110,10 @@ def parse_paf_lines(paf, min_qual=1, complex_identifier=False):
                 log.debug(f"Low quality alignment: {read}")
                 continue
 
-            if ix in entries.keys():
-                entries[ix].append(entry)
+            if key in entries.keys():
+                entries[key].append(entry)
             else:
-                entries[ix] = [entry]
+                entries[key] = [entry]
 
     return entries
 

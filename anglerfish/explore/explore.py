@@ -43,23 +43,21 @@ def run_explore(
     log.info(f"Run uuid {run_uuid}")
 
     adaptors: list[Adaptor] = load_adaptors()
-    alignments = []
+    alignments: list[tuple[Adaptor, os.PathLike]] = []
 
     # Map all reads against all adaptors
     for adaptor in adaptors:
-        adaptor_name = adaptor.name
-
         # Align
-        aln_path = os.path.join(outdir, f"{adaptor_name}.paf")
+        aln_path = os.path.join(outdir, f"{adaptor.name}.paf")
         alignments.append((adaptor, aln_path))
         if os.path.exists(aln_path) and use_existing:
-            log.info(f"Skipping {adaptor_name} as alignment already exists")
+            log.info(f"Skipping {adaptor.name} as alignment already exists")
             continue
-        adaptor_path = os.path.join(outdir, f"{adaptor_name}.fasta")
+        adaptor_path = os.path.join(outdir, f"{adaptor.name}.fasta")
         with open(adaptor_path, "w") as f:
             f.write(adaptor.get_fastastring(insert_Ns=False))
 
-        log.info(f"Aligning {adaptor_name}")
+        log.info(f"Aligning {adaptor.name}")
         run_minimap2(
             fastq_in=fastq,
             index_file=adaptor_path,
@@ -73,7 +71,9 @@ def run_explore(
     adaptors_included = []
     for adaptor, aln_path in alignments:
         log.info(f"Parsing {adaptor.name}")
-        aln_dict_with_lists = parse_paf_lines(aln_path, complex_identifier=True)
+        aln_dict_with_lists: dict[dict] = parse_paf_lines(
+            aln_path, complex_identifier=True
+        )
 
         # Choose only the highest scoring alignment for each combination of read, adaptor end and strand
         aln_dict = dict(
