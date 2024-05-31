@@ -1,9 +1,10 @@
+*.egg-info
 *.pyc
 *~
-*.egg-info
+.*_cache
 .DS_Store
 .benchmarks
-.*_cache
-node_modules
 .vscode
+__pycache__
 build
+node_modules
