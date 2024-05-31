@@ -80,7 +80,7 @@ def parse_paf_lines(
                     "rend": int(paf_cols[3]),  # end alignment on read
                     "strand": paf_cols[4],
                     "cg": paf_cols[-2],  # cigar string
-                    "cs": paf_cols[-1],  # cs string
+                    "cs": paf_cols[-1],  # cigar diff string
                     "q": int(paf_cols[11]),  # Q score
                     "iseq": None,
                     "sample": None,
