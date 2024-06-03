@@ -46,8 +46,8 @@ def run_minimap2(
         *["-m", "8"],  # Minimal chaining score
         *["-t", str(threads)],  # Number of threads
         *["-w", "5"],  # Minimizer window size
-        index_file, # Target
-        fastq_in, # Query
+        index_file,  # Target
+        fastq_in,  # Query
     ]
 
     run_log = f"{output_paf}.log"
