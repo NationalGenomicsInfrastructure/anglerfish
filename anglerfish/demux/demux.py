@@ -247,7 +247,9 @@ def cluster_matches(
     return unmatched_bed, matched_bed
 
 
-def write_demuxedfastq(beds: dict[str,list], fastq_in: os.PathLike, fastq_out: os.PathLike) -> str:
+def write_demuxedfastq(
+    beds: dict[str, list], fastq_in: os.PathLike, fastq_out: os.PathLike
+) -> str:
     """
     Intended for multiprocessing
     Take a set of coordinates in bed format [[seq1, start, end, ..][seq2, ..]]
