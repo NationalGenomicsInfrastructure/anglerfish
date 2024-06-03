@@ -9,10 +9,14 @@ import Levenshtein as lev
 from Bio.Seq import Seq
 from Bio.SeqIO.QualityIO import FastqGeneralIterator
 
+from anglerfish.demux.adaptor import Adaptor
+
 log = logging.getLogger("anglerfish")
 
 
-def parse_cs(cs_string, index, umi_before=0, umi_after=0):
+def parse_cs(
+    cs_string: str, index: str, umi_before: int = 0, umi_after: int = 0
+) -> tuple[str, int]:
     """
     Parses the CS string of a paf alignment and matches it to the given index using a max Levenshtein distance
     """
@@ -113,7 +117,9 @@ def parse_paf_lines(
     return entries
 
 
-def layout_matches(i5_name, i7_name, paf_entries):
+def layout_matches(
+    i5_name: str, i7_name: str, paf_entries: dict[str, list[dict]]
+) -> tuple[dict, dict, dict, dict]:
     """
     Search the parsed paf alignments and layout possible Illumina library fragments
     Returns dicts:
@@ -160,7 +166,11 @@ def layout_matches(i5_name, i7_name, paf_entries):
 
 
 def cluster_matches(
-    sample_adaptor, matches, max_distance, i7_reversed=False, i5_reversed=False
+    sample_adaptor: Adaptor,
+    matches: tuple[dict, dict, dict, dict],
+    max_distance: int,
+    i7_reversed: bool = False,
+    i5_reversed: bool = False,
 ):
     # Only illumina fragments
     matched = {}
@@ -237,7 +247,7 @@ def cluster_matches(
     return unmatched_bed, matched_bed
 
 
-def write_demuxedfastq(beds, fastq_in, fastq_out):
+def write_demuxedfastq(beds: dict[str,list], fastq_in: os.PathLike, fastq_out: os.PathLike) -> str:
     """
     Intended for multiprocessing
     Take a set of coordinates in bed format [[seq1, start, end, ..][seq2, ..]]
@@ -245,6 +255,7 @@ def write_demuxedfastq(beds, fastq_in, fastq_out):
 
     Return: PID of the process
     """
+
     gz_buf = 131072
     fq_files = glob.glob(fastq_in)
     for fq in fq_files:
