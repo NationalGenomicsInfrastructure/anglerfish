@@ -169,3 +169,17 @@ def test_parse_paf_lines(tmp_demux_path):
     }
 
     assert paf_lines_complex == expected_complex
+
+
+def test_parse_cd(tmp_demux_path):
+    paf_path = tmp_demux_path / "test.paf"
+    paf_lines_simple = to_test.parse_paf_lines(paf_path)
+
+    cs = to_test.parse_cs(
+        cs_string=paf_lines_simple["truseq-read_10_C-index_5G"][1]["cs"],
+        index="GGGGG",
+        umi_before=0,
+        umi_after=0,
+    )
+
+    #TODO: Finish this test
