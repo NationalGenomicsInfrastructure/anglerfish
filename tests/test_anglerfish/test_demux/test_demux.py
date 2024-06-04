@@ -1,3 +1,4 @@
+import gzip
 import tempfile
 from pathlib import Path
 
@@ -7,179 +8,146 @@ from anglerfish.demux import demux as to_test
 
 
 @pytest.fixture(scope="module")
-def tmp_demux_path():
+def fixture():
     """Create a temporary directory shared between all tests in this module."""
     tmp = tempfile.TemporaryDirectory()
     tmp_path = Path(tmp.name)
 
-    yield tmp_path
+    # Create subset testdata, a single read subset from the testdata
+    with gzip.open(tmp_path / "testdata.fastq.gz", "wb") as f:
+        f.write(b"""
+@0ad8bdb6-e009-43c5-95b1-d381e699f983 runid=7d98ab9ee7f513f92fd5e382dc3dd563b956e4fa sampleid=Pools read=7283 ch=21 start_time=2020-01-17T15:19:22Z
+CGTTGTAGTTCACCAAACCCAACAACCTAGATAGGCCGCACCTAAAATGATACGGCGACCGCGAGATCCCGATTCTGACACTCTTTCCCTACACGACGCTCTTCCGATCTCACAAAATTATTAGGCATGGTGGTGCATGCCTGTGGTCCCAGCTACTTGGGAGGCTGAGGCAGGGAATCGCTTGAACCCAGGAGGCAGAGGTTGCAGTGAGCCAGACCAGCGCCACTGTACTCCAGCCTGGCAACAAGCAGGAACTCCGTTTCAAAACAAGATCTAGGGTGGTTTTCCCAAGTTAGTCAGGAGATCGGAAGAGCACGTCGGAACTCCAGTCACTAACTTGGTCAACCTAGAAATCTGATGCCGTCTTCTGCTTGTTAGGTGCTGGCCTATCTGGGTGTTGGGTTTGGTTGTATAACGT
++
+&&##$$'$()'$$&$&%%%%%%%(*340++1','',,)-*669:98731/0+&&(%&$$$%(',,4$$,&;>@:2$-')&&25<<>/4.,'*$,--**6<;<>)1...2-&%+///+++*%'*1B:<BFDDB=760998EEA?%33115/5-&&3%%/22:+07660*76..7221680('+058)777(@.A?5.-+&'*7)1*-$)))-/1)/'$*%(**.6*),$&&,+%13-2+'%$(%&+&(&'+%$$+.0023<<6946>93;:8618'/&%,%'()344:=:'*6*5$*39090-/4/4)537-/166+)%,'(%'02)5-5@A:/;75&'3?=9=--=;.,/030'9%&&((48977;<=@;3445%'.2<=;51/(.,),*7*%&(,(()&'/01*)'%%$%%(%%$%$
+
+""")
+
+    # Create appropriate index file
+    with open(tmp_path / "truseq.fasta", "w") as f:
+        f.write(""">truseq_i7
+GATCGGAAGAGCACACGTCTGAACTCCAGTCACNNNNNNNNNNATCTCGTATGCCGTCTTCTGCTTG
+>truseq_i5
+AATGATACGGCGACCACCGAGATCTACACTCTTTCCCTACACGACGCTCTTCCGATCT
+
+""")
+
+    fixture = {
+        "tmp_path": tmp_path,
+        "testdata": tmp_path / "testdata.fastq.gz",
+        "index_file": tmp_path / "truseq.fasta",
+        "paf": tmp_path / "test.paf",
+        "expected_index": "TAACTTGGTC",
+    }
+
+    yield fixture
+
     tmp.cleanup()
 
 
-def test_run_minimap2(tmp_demux_path):
-    paf_path = tmp_demux_path / "test.paf"
-
+def test_run_minimap2(fixture):
     to_test.run_minimap2(
-        fastq_in="testdata/explore/explore_testdata.fastq",
-        index_file="testdata/explore/illumina_ud.fasta",
-        output_paf=paf_path,
+        fastq_in=fixture["testdata"],
+        index_file=fixture["index_file"],
+        output_paf=fixture["paf"],
         threads=1,
         minimap_b=1,
     )
 
-    # String constructed with explicit whitespaces to avoid issues with tab interpretation
-    expected = (
-        "\n".join(
-            [
-                "\t".join(
-                    [
-                        "truseq-read_10_C-index_5G",
-                        "130",
-                        "0",
-                        "58",
-                        "+",
-                        "truseq_i5",
-                        "58",
-                        "0",
-                        "58",
-                        "58",
-                        "58",
-                        "60",
-                        "NM:i:0",
-                        "ms:i:348",
-                        "AS:i:348",
-                        "nn:i:0",
-                        "tp:A:P",
-                        "cm:i:16",
-                        "s1:i:54",
-                        "s2:i:0",
-                        "de:f:0",
-                        "rl:i:0",
-                        "cg:Z:58M",
-                        "cs:Z::58",
-                    ]
-                ),
-                "\t".join(
-                    [
-                        "truseq-read_10_C-index_5G",
-                        "130",
-                        "68",
-                        "130",
-                        "+",
-                        "truseq_i7",
-                        "57",
-                        "0",
-                        "57",
-                        "57",
-                        "62",
-                        "60",
-                        "NM:i:5",
-                        "ms:i:333",
-                        "AS:i:328",
-                        "nn:i:0",
-                        "tp:A:P",
-                        "cm:i:15",
-                        "s1:i:54",
-                        "s2:i:0",
-                        "de:f:0.0172",
-                        "rl:i:0",
-                        "cg:Z:33M5I24M",
-                        "cs:Z::33+ggggg:24",
-                    ]
-                ),
-            ]
-        )
-        + "\n"
-    )
+    expected = "0ad8bdb6-e009-43c5-95b1-d381e699f983\t418\t302\t374\t+\ttruseq_i7\t67\t0\t67\t51\t64\t25\tNM:i:23\tms:i:275\tAS:i:266\tnn:i:10\ttp:A:P\tcm:i:5\ts1:i:29\ts2:i:0\tde:f:0.2388\trl:i:0\tcg:Z:11M2D33M7I21M\tcs:Z::11-ca:6*tg:13*nt*na*na*nc*nt*nt*ng*ng*nt*nc:1*ta:1+ctagaaa:2*gt*tg:17\n0ad8bdb6-e009-43c5-95b1-d381e699f983\t418\t45\t110\t+\ttruseq_i5\t58\t0\t58\t56\t66\t38\tNM:i:10\tms:i:313\tAS:i:305\tnn:i:0\ttp:A:P\tcm:i:10\ts1:i:37\ts2:i:0\tde:f:0.0667\trl:i:0\tcg:Z:15M1D6M7I3M1I33M\tcs:Z::15-a*cg:5+tcccgat:3+g:33\n"
+    received = open(fixture["paf"]).read()
 
-    received = open(paf_path).read()
     assert expected == received
 
 
-def test_parse_paf_lines(tmp_demux_path):
-    paf_path = tmp_demux_path / "test.paf"
-
-    paf_lines_simple = to_test.parse_paf_lines(paf_path)
-
+def test_parse_paf_lines(fixture):
+    paf_lines_simple = to_test.parse_paf_lines(fixture["paf"])
     expected_simple = {
-        "truseq-read_10_C-index_5G": [
+        "0ad8bdb6-e009-43c5-95b1-d381e699f983": [
             {
-                "read": "truseq-read_10_C-index_5G",
-                "adapter": "truseq_i5",
-                "rlen": 130,
-                "rstart": 0,
-                "rend": 58,
+                "read": "0ad8bdb6-e009-43c5-95b1-d381e699f983",
+                "adapter": "truseq_i7",
+                "rlen": 418,
+                "rstart": 302,
+                "rend": 374,
                 "strand": "+",
-                "cg": "cg:Z:58M",
-                "cs": "cs:Z::58",
-                "q": 60,
+                "cg": "cg:Z:11M2D33M7I21M",
+                "cs": "cs:Z::11-ca:6*tg:13*nt*na*na*nc*nt*nt*ng*ng*nt*nc:1*ta:1+ctagaaa:2*gt*tg:17",
+                "q": 25,
                 "iseq": None,
                 "sample": None,
             },
             {
-                "read": "truseq-read_10_C-index_5G",
-                "adapter": "truseq_i7",
-                "rlen": 130,
-                "rstart": 68,
-                "rend": 130,
+                "read": "0ad8bdb6-e009-43c5-95b1-d381e699f983",
+                "adapter": "truseq_i5",
+                "rlen": 418,
+                "rstart": 45,
+                "rend": 110,
                 "strand": "+",
-                "cg": "cg:Z:33M5I24M",
-                "cs": "cs:Z::33+ggggg:24",
-                "q": 60,
+                "cg": "cg:Z:15M1D6M7I3M1I33M",
+                "cs": "cs:Z::15-a*cg:5+tcccgat:3+g:33",
+                "q": 38,
                 "iseq": None,
                 "sample": None,
             },
         ]
     }
-
     assert paf_lines_simple == expected_simple
 
-    paf_lines_complex = to_test.parse_paf_lines(paf_path, complex_identifier=True)
+    paf_lines_complex = to_test.parse_paf_lines(fixture["paf"])
     expected_complex = {
-        "truseq-read_10_C-index_5G_i5_positive": [
+        "0ad8bdb6-e009-43c5-95b1-d381e699f983": [
             {
-                "read": "truseq-read_10_C-index_5G",
-                "adapter": "truseq_i5",
-                "rlen": 130,
-                "rstart": 0,
-                "rend": 58,
-                "strand": "+",
-                "cg": "cg:Z:58M",
-                "cs": "cs:Z::58",
-                "q": 60,
-                "iseq": None,
-                "sample": None,
-            }
-        ],
-        "truseq-read_10_C-index_5G_i7_positive": [
-            {
-                "read": "truseq-read_10_C-index_5G",
+                "read": "0ad8bdb6-e009-43c5-95b1-d381e699f983",
                 "adapter": "truseq_i7",
-                "rlen": 130,
-                "rstart": 68,
-                "rend": 130,
+                "rlen": 418,
+                "rstart": 302,
+                "rend": 374,
                 "strand": "+",
-                "cg": "cg:Z:33M5I24M",
-                "cs": "cs:Z::33+ggggg:24",
-                "q": 60,
+                "cg": "cg:Z:11M2D33M7I21M",
+                "cs": "cs:Z::11-ca:6*tg:13*nt*na*na*nc*nt*nt*ng*ng*nt*nc:1*ta:1+ctagaaa:2*gt*tg:17",
+                "q": 25,
                 "iseq": None,
                 "sample": None,
-            }
-        ],
+            },
+            {
+                "read": "0ad8bdb6-e009-43c5-95b1-d381e699f983",
+                "adapter": "truseq_i5",
+                "rlen": 418,
+                "rstart": 45,
+                "rend": 110,
+                "strand": "+",
+                "cg": "cg:Z:15M1D6M7I3M1I33M",
+                "cs": "cs:Z::15-a*cg:5+tcccgat:3+g:33",
+                "q": 38,
+                "iseq": None,
+                "sample": None,
+            },
+        ]
     }
-
     assert paf_lines_complex == expected_complex
 
 
-def test_parse_cd(tmp_demux_path):
-    paf_path = tmp_demux_path / "test.paf"
-    paf_lines_simple = to_test.parse_paf_lines(paf_path)
+def test_parse_cd(fixture):
+    paf_lines_simple = to_test.parse_paf_lines(fixture["paf"])
 
-    cs = to_test.parse_cs(
-        cs_string=paf_lines_simple["truseq-read_10_C-index_5G"][1]["cs"],
-        index="GGGGG",
-        umi_before=0,
-        umi_after=0,
-    )
+    for read_name, alignments in paf_lines_simple.items():
+        for alignment in alignments:
+            cs_string = alignment["cs"]
+            cs_parsed = to_test.parse_cs(
+                cs_string=cs_string,
+                index=fixture["expected_index"],
+                umi_before=0,
+                umi_after=0,
+            )
 
-    #TODO: Finish this test
+            if alignment["adapter"] == "truseq_i7":
+                # Perfect match to index
+                assert cs_parsed[0] == fixture["expected_index"].lower()
+                assert cs_parsed[1] == 0
+            elif alignment["adapter"] == "truseq_i5":
+                # No index, distance the length of all concatenated substitutions of the cs string
+                assert cs_parsed[0] == ""
+                assert cs_parsed[1] == 10
+            else:
+                raise AssertionError("Case not covered.")
