@@ -12,9 +12,8 @@ def fixture():
     f"""Fixture for all tests within {__file__}.
     
     Creats a temporary directory with...
-    - testdata.fastq.gz: A single read subset from the testdata with a perfect index match to the truseq i7 adaptor.
+    - testdata.fastq.gz: A single read subset from the testdata with a perfect index match (TAACTTGGTC) to the truseq i7 adaptor.
     - truseq.fasta: A fasta file with the truseq i7 and i5 adaptors.
-
 
     Expected files to be created...
     - test.paf: The output of minimap2 run on the testdata.fastq.gz and truseq.fasta.
