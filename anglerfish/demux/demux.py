@@ -15,19 +15,30 @@ log = logging.getLogger("anglerfish")
 
 
 def parse_cs(
-    cs_string: str, index: str, umi_before: int = 0, umi_after: int = 0
+    cs_string: str, index_seq: str, umi_before: int = 0, umi_after: int = 0
 ) -> tuple[str, int]:
     """
-    Parses the CS string of a paf alignment and matches it to the given index using a max Levenshtein distance
+    Given a cs string, an index sequence, and optional UMI lengths:
+
+    - Parse the cs string to find the suspected index region of the read.
+    - Return a tuple of the given index sequence and it's Levenshtein distance 
+        to the parsed index region of the read.
     """
-    nt = re.compile(r"\*n([atcg])")
-    nts = "".join(re.findall(nt, cs_string))
+    # Create pattern for a substitution from "n" in the adaptor to a base in the read
+    n_subbed_pattern = re.compile(r"\*n([atcg])")
+    # Concatenate all n-to-base substitutions to yield the sequence of the read spanning the mask
+    bases_spanning_mask = "".join(re.findall(n_subbed_pattern, cs_string))
+    # Trim away any UMIs
     if umi_before is not None and umi_before > 0:
-        nts = nts[umi_before:]
-    if umi_after is not None and umi_after > 0:
-        nts = nts[:-umi_after]
-    # Allow for mismatches
-    return nts, lev.distance(index.lower(), nts)
+        bases_spanning_index_mask = bases_spanning_mask[umi_before:]
+    elif umi_after is not None and umi_after > 0:
+        bases_spanning_index_mask = bases_spanning_mask[:-umi_after]
+    else:
+        bases_spanning_index_mask = bases_spanning_mask
+    # Return the index and the Levenshtein distance between it and the presumed index region of the read
+    return bases_spanning_index_mask, lev.distance(
+        index_seq.lower(), bases_spanning_index_mask
+    )
 
 
 def run_minimap2(

@@ -143,7 +143,7 @@ def test_parse_cd(fixture):
             cs_string = alignment["cs"]
             cs_parsed = to_test.parse_cs(
                 cs_string=cs_string,
-                index=fixture["expected_index"],
+                index_seq=fixture["expected_index"],
                 umi_before=0,
                 umi_after=0,
             )
