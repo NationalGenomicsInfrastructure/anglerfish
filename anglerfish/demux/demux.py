@@ -21,7 +21,7 @@ def parse_cs(
     Given a cs string, an index sequence, and optional UMI lengths:
 
     - Parse the cs string to find the suspected index region of the read.
-    - Return a tuple of the given index sequence and it's Levenshtein distance 
+    - Return a tuple of the given index sequence and it's Levenshtein distance
         to the parsed index region of the read.
     """
     # Create pattern for a substitution from "n" in the adaptor to a base in the read

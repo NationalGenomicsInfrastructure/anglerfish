@@ -4,6 +4,7 @@
 .*_cache
 .DS_Store
 .benchmarks
+.ignoredir
 .vscode
 __pycache__
 build
