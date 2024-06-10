@@ -193,7 +193,9 @@ def run(
         typer.Option(
             "--max-distance",
             "-m",
-            help="Manually set maximum edit distance for BC matching, automatically set this is set to either 1 or 2",
+            help="Manually set maximum allowed edit distance for index matching,"
+            + "by default this is set to 0, 1 or 2 based on the minimum detected"
+            + "index distance in the samplesheet.",
         ),
     ] = 2,
     max_unknowns: Annotated[

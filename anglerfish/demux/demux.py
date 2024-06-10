@@ -16,11 +16,11 @@ def parse_cs(cs_string, index, umi_before=0, umi_after=0):
     """
     Parses the CS string of a paf alignment and matches it to the given index using a max Levenshtein distance
     """
-    nt = re.compile("\*n([atcg])")
+    nt = re.compile(r"\*n([atcg])")
     nts = "".join(re.findall(nt, cs_string))
-    if umi_before > 0:
+    if umi_before is not None and umi_before > 0:
         nts = nts[umi_before:]
-    if umi_after > 0:
+    if umi_after is not None and umi_after > 0:
         nts = nts[:-umi_after]
     # Allow for mismatches
     return nts, lev.distance(index.lower(), nts)
@@ -184,26 +184,26 @@ def cluster_matches(
         fi7 = ""
         for _, adaptor, _ in sample_adaptor:
             try:
-                i5_seq = adaptor.i5.index
+                i5_seq = adaptor.i5.index_seq
                 if i5_reversed and i5_seq is not None:
                     i5_seq = str(Seq(i5_seq).reverse_complement())
                 fi5, d1 = parse_cs(
                     i5["cs"],
                     i5_seq,
-                    adaptor.i5_umi_before,
-                    adaptor.i5_umi_after,
+                    adaptor.i5.len_umi_before_index,
+                    adaptor.i5.len_umi_after_index,
                 )
             except AttributeError:
                 d1 = 0  # presumably it's single index, so no i5
 
-            i7_seq = adaptor.i7.index
+            i7_seq = adaptor.i7.index_seq
             if i7_reversed and i7_seq is not None:
                 i7_seq = str(Seq(i7_seq).reverse_complement())
             fi7, d2 = parse_cs(
                 i7["cs"],
                 i7_seq,
-                adaptor.i7_umi_before,
-                adaptor.i7_umi_after,
+                adaptor.i7.len_umi_before_index,
+                adaptor.i7.len_umi_after_index,
             )
             dists.append(d1 + d2)
 
@@ -217,8 +217,8 @@ def cluster_matches(
             continue
         if dists[index_min] > max_distance:
             # Find only full length i7(+i5) adaptor combos. Basically a list of "known unknowns"
-            if len(fi7) + len(fi5) == len(adaptor.i7.index or "") + len(
-                adaptor.i5.index or ""
+            if len(fi7) + len(fi5) == len(adaptor.i7.index_seq or "") + len(
+                adaptor.i5.index_seq or ""
             ):
                 fi75 = "+".join([i for i in [fi7, fi5] if not i == ""])
                 unmatched_bed.append([read, start_insert, end_insert, fi75, "999", "."])

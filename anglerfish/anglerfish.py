@@ -28,17 +28,7 @@ log = logging.getLogger("anglerfish")
 
 MAX_PROCESSES = 64  # Ought to be enough for anybody
 
-
-def run_demux(args):
-    multiprocessing.set_start_method("spawn")
-
-    if args.debug:
-        log.setLevel(logging.DEBUG)
-    run_uuid = str(uuid.uuid4())
-    ss = SampleSheet(args.samplesheet, args.ont_barcodes)
-    version = pkg_resources.get_distribution("bio-anglerfish").version
-    report = Report(args.run_name, run_uuid, version)
-    sys.stderr.write("""
+anglerfish_logo = r"""
      ___
    ( )  \ -..__
       _.|~”~~~”…_
@@ -49,33 +39,66 @@ def run_demux(args):
    \                /
     “--…_     _..~%´
          ```´´
-""")
+"""
+
+
+def run_demux(args):
+    multiprocessing.set_start_method("spawn")
+
+    if args.debug:
+        log.setLevel(logging.DEBUG)
+    run_uuid = str(uuid.uuid4())
+    ss = SampleSheet(args.samplesheet, args.ont_barcodes)
+    version = pkg_resources.get_distribution("bio-anglerfish").version
+    report = Report(args.run_name, run_uuid, version)
+    sys.stderr.write(anglerfish_logo)
     log.info(f" version {version}")
     log.info(f" arguments {vars(args)}")
     log.info(f" run uuid {run_uuid}")
-    bc_dist = ss.minimum_bc_distance()
+    min_distance = ss.minimum_bc_distance()
     if args.max_distance is None:
-        if bc_dist > 1:
-            args.max_distance = 2
-        else:
-            args.max_distance = 1
+        # Default: Set the maximum distance for barcode matching to 0, 1 or 2
+        # depending on the smallest detected edit distance between indices in the samplesheet
+        args.max_distance = min(min_distance - 1, 2)
         log.info(f"Using maximum edit distance of {args.max_distance}")
-    if args.max_distance >= bc_dist:
+    if args.max_distance >= min_distance:
         log.error(
-            f" Edit distance of barcodes in samplesheet are less than the minimum specified {args.max_distance}>={bc_dist}"
+            f" The maximum allowed edit distance for barcode matching (={args.max_distance})"
+            + f"is greater than the smallest detected edit distance between indices in samplesheet (={min_distance})"
+            + ", which will result in ambiguous matches."
         )
         exit()
-    log.debug(f"Samplesheet bc_dist == {bc_dist}")
+    log.debug(f"Samplesheet bc_dist == {min_distance}")
     if args.threads > MAX_PROCESSES:
         log.warning(
             f" Setting threads to {MAX_PROCESSES} as the maximum number of processes is {MAX_PROCESSES}"
         )
         args.threads = MAX_PROCESSES
 
-    # Sort the adaptors by type and size
-    adaptors_t = [(entry.adaptor.name, entry.ont_barcode) for entry in ss]
-    adaptor_set = set(adaptors_t)
-    adaptors_sorted = dict([(i, []) for i in adaptor_set])
+    ## Sort the adaptors by type and size
+
+    # Get a list of tuples with the adaptor name and ONT barcode
+    adaptor_tuples: list[tuple[str, str]] = [
+        (entry.adaptor.name, entry.ont_barcode) for entry in ss
+    ]
+
+    # Convert to set to enforce uniqueness
+    adaptor_set: set[tuple[str, str]] = set(adaptor_tuples)
+
+    # Create a dictionary with the adaptors as keys and an empty list as value
+    adaptors_sorted: dict[tuple[str, str], list] = dict([(i, []) for i in adaptor_set])
+
+    # Populate the dictionary values with sample-specific information
+    """
+        adaptors_sorted = {
+            ( adaptor_name, ont_barcode ) : [
+                (sample_name, adaptor, fastq),
+                (sample_name, adaptor, fastq),
+                ...
+            ],
+            ...
+        } 
+    """
     for entry in ss:
         adaptors_sorted[(entry.adaptor.name, entry.ont_barcode)].append(
             (entry.sample_name, entry.adaptor, os.path.abspath(entry.fastq))
@@ -91,18 +114,19 @@ def run_demux(args):
         adaptor_name, ont_barcode = key
         fastq_path = sample[0][2]
         # If there are multiple ONT barcodes, we need to add the ONT barcode to the adaptor name
-        adaptor_bc_name = adaptor_name
         if ont_barcode:
-            adaptor_bc_name = adaptor_name + "_" + ont_barcode
+            adaptor_bc_name = f"{adaptor_name}_{ont_barcode}"
+        else:
+            adaptor_bc_name = adaptor_name
         fastq_files = glob.glob(fastq_path)
 
         # Align
-        aln_path = os.path.join(args.out_fastq, f"{adaptor_bc_name}.paf")
+        align_path = os.path.join(args.out_fastq, f"{adaptor_bc_name}.paf")
         adaptor_path = os.path.join(args.out_fastq, f"{adaptor_name}.fasta")
         with open(adaptor_path, "w") as f:
             f.write(ss.get_fastastring(adaptor_name))
         for fq in fastq_files:
-            run_minimap2(fq, adaptor_path, aln_path, args.threads)
+            run_minimap2(fq, adaptor_path, align_path, args.threads)
 
         # Easy line count in input fastq files
         num_fq = 0
@@ -111,7 +135,7 @@ def run_demux(args):
                 for i in f:
                     num_fq += 1
         num_fq = int(num_fq / 4)
-        paf_entries = parse_paf_lines(aln_path)
+        paf_entries = parse_paf_lines(align_path)
 
         # Make stats
         log.info(f" Searching for adaptor hits in {adaptor_bc_name}")
@@ -253,7 +277,8 @@ def run_demux(args):
             sample_dists = [
                 (
                     lev.distance(
-                        i[0], f"{x.adaptor.i7_index}+{x.adaptor.i5_index}".lower()
+                        i[0],
+                        f"{x.adaptor.i7.index_seq}+{x.adaptor.i5.index_seq}".lower(),
                     ),
                     x.sample_name,
                 )
