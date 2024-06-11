@@ -43,4 +43,4 @@ jobs:
       - shell: bash -l {0}
         name: Run anglerfish explore
         run: |
-          anglerfish explore -f testdata/BC18_P14351_1001.fastq.gz -o testdata/explore_output
+          anglerfish explore -f testdata/BC18_P14351_1001.fastq.gz -o explore_output
