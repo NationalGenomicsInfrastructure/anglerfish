@@ -181,7 +181,7 @@ def test_parse_paf_lines_complex(fixture):
     assert paf_lines_complex == expected_complex
 
 
-def test_parse_cd(fixture):
+def test_parse_cs(fixture):
     paf_lines_simple = to_test.parse_paf_lines(fixture["paf_single"])
 
     for read_name, alignments in paf_lines_simple.items():
