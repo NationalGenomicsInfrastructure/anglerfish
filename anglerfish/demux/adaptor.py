@@ -63,6 +63,32 @@ class AdaptorPart:
     """This class is used for the i5 or i7 adaptor."""
 
     def __init__(self, sequence_token: str, name: str, index_seq: str | None):
+        ## Type declaration of attributes to be assigned upon instantiation
+        # Attributes from arguments
+        self.name: str
+        self.sequence_token: str
+        self.index_seq: str | None
+
+        # Index attributes
+        self.has_index: bool
+        self.len_index: int | None
+        self.len_before_index: int | None
+        self.len_after_index: int | None
+
+        # UMI attributes
+        self.has_umi: bool
+        self.len_umi: int | None
+        self.len_umi_before_index: int | None
+        self.len_umi_after_index: int | None
+
+        # Length attributes
+        self.len_total: int | None
+        self.len_constant: int
+
+        # Instantiation outsorced to private method
+        self._setup(sequence_token, name, index_seq)
+
+    def _setup(self, sequence_token: str, name: str, index_seq: str | None):
         # Assign attributes from args
         self.sequence_token: str = sequence_token
         self.name: str = name
@@ -97,14 +123,6 @@ class AdaptorPart:
         else:
             self.has_umi = False
             self.len_umi = 0
-
-        # Type declaration of attributes to be assigned
-        self.len_before_index: int | None
-        self.len_after_index: int | None
-        self.len_umi_before_index: int | None
-        self.len_umi_after_index: int | None
-        self.len_total: int | None
-        self.len_constant: int
 
         # Lengths
         if self.has_index and self.has_umi:
