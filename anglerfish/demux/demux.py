@@ -177,12 +177,12 @@ def layout_matches(
 
 
 def cluster_matches(
-    sample_adaptor: Adaptor,
+    sample_adaptor: dict[tuple[str, str], list],
     matches: tuple[dict, dict, dict, dict],
     max_distance: int,
     i7_reversed: bool = False,
     i5_reversed: bool = False,
-):
+) -> tuple[list, list]:
     # Only illumina fragments
     matched = {}
     matched_bed = []
