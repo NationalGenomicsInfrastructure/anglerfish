@@ -58,10 +58,10 @@ jobs:
           pip install mypy
       # Start by installing type stubs
       - name: mypy --> Install stubs
-        run: echo -e "y" | mypy --install-types **/*.py || exit 0
+        run: echo -e "y" | mypy --install-types . || exit 0
       - name: mypy --> Static type checking
         # Configured in pyprojet.toml
-        run: mypy **/*.py
+        run: mypy .
 
     # Use Prettier to check various file formats
   prettier:
