@@ -4,6 +4,7 @@ import logging
 import os
 import re
 import subprocess
+from typing import cast
 
 import Levenshtein as lev
 from Bio.Seq import Seq
@@ -15,7 +16,10 @@ log = logging.getLogger("anglerfish")
 
 
 def parse_cs(
-    cs_string: str, index_seq: str, umi_before: int|None = 0, umi_after: int|None = 0
+    cs_string: str,
+    index_seq: str,
+    umi_before: int | None = 0,
+    umi_after: int | None = 0,
 ) -> tuple[str, int]:
     """
     Given a cs string, an index sequence, and optional UMI lengths:
@@ -203,7 +207,6 @@ def cluster_matches(
     matched_bed = []
     unmatched_bed = []
     for read, alignments in matches.items():
-
         if (
             alignments[0]["adapter"][-2:] == "i5"
             and alignments[1]["adapter"][-2:] == "i7"
@@ -224,7 +227,7 @@ def cluster_matches(
         fi5 = ""
         fi7 = ""
         for _, adaptor, _ in sample_adaptor:
-            try:
+            if adaptor.i5.index_seq is not None:
                 i5_seq = adaptor.i5.index_seq
                 if i5_reversed and i5_seq is not None:
                     i5_seq = str(Seq(i5_seq).reverse_complement())
@@ -234,18 +237,22 @@ def cluster_matches(
                     adaptor.i5.len_umi_before_index,
                     adaptor.i5.len_umi_after_index,
                 )
-            except AttributeError:
-                d1 = 0  # presumably it's single index, so no i5
+            else:
+                d1 = 0
 
-            i7_seq = adaptor.i7.index_seq
-            if i7_reversed and i7_seq is not None:
-                i7_seq = str(Seq(i7_seq).reverse_complement())
-            fi7, d2 = parse_cs(
-                i7["cs"],
-                i7_seq,
-                adaptor.i7.len_umi_before_index,
-                adaptor.i7.len_umi_after_index,
-            )
+            if adaptor.i7.index_seq is not None:
+                i7_seq = adaptor.i7.index_seq
+                if i7_reversed and i7_seq is not None:
+                    i7_seq = str(Seq(i7_seq).reverse_complement())
+                fi7, d2 = parse_cs(
+                    i7["cs"],
+                    i7_seq,
+                    adaptor.i7.len_umi_before_index,
+                    adaptor.i7.len_umi_after_index,
+                )
+            else:
+                d2 = 0
+
             dists.append(d1 + d2)
 
         index_min = min(range(len(dists)), key=dists.__getitem__)
@@ -274,7 +281,7 @@ def cluster_matches(
 
 def write_demuxedfastq(
     beds: dict[str, list], fastq_in: os.PathLike, fastq_out: os.PathLike
-) -> str:
+) -> int:
     """
     Intended for multiprocessing
     Take a set of coordinates in bed format [[seq1, start, end, ..][seq2, ..]]
@@ -284,11 +291,12 @@ def write_demuxedfastq(
     """
 
     gz_buf = 131072
-    fq_files = glob.glob(fastq_in)
+    fq_files = cast(list[str], glob.glob(fastq_in))
     for fq in fq_files:
         with subprocess.Popen(
             ["gzip", "-c", "-d", fq], stdout=subprocess.PIPE, bufsize=gz_buf
         ) as fzi:
+            assert isinstance(fzi, subprocess.Popen)
             fi = io.TextIOWrapper(fzi.stdout, write_through=True)
             with open(fastq_out, "ab") as ofile:
                 with subprocess.Popen(
@@ -298,6 +306,7 @@ def write_demuxedfastq(
                     bufsize=gz_buf,
                     close_fds=False,
                 ) as oz:
+                    assert isinstance(oz, subprocess.Popen)
                     for title, seq, qual in FastqGeneralIterator(fi):
                         new_title = title.split()
                         if new_title[0] not in beds.keys():
