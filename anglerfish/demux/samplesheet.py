@@ -3,12 +3,13 @@ import glob
 import re
 from dataclasses import dataclass
 from itertools import combinations
+from typing import cast
 
 import Levenshtein as lev
 
 from anglerfish.demux.adaptor import Adaptor, load_adaptors
 
-ADAPTORS = load_adaptors(raw=True)
+ADAPTORS = cast(dict, load_adaptors(raw=True))
 
 
 @dataclass
@@ -32,7 +33,8 @@ class SampleSheet:
         self.samplesheet = []
         try:
             csvfile = open(input_csv)
-            dialect = csv.Sniffer().sniff(csvfile.readline(), [",", ";", "\t"])
+            csv_first_line: str = csvfile.readline()
+            dialect = csv.Sniffer().sniff(csv_first_line, ",;\t")
             csvfile.seek(0)
             data = csv.DictReader(
                 csvfile,
@@ -113,14 +115,14 @@ class SampleSheet:
         or within each ONT barcode group.
         """
 
-        ont_bc_to_adaptors = {}
+        ont_bc_to_adaptors: dict = {}
         for entry in self.samplesheet:
             if entry.ont_barcode in ont_bc_to_adaptors:
                 ont_bc_to_adaptors[entry.ont_barcode].append(entry.adaptor)
             else:
                 ont_bc_to_adaptors[entry.ont_barcode] = [entry.adaptor]
 
-        testset = {}
+        testset: dict = {}
         for ont_barcode, adaptors in ont_bc_to_adaptors.items():
             testset[ont_barcode] = []
             for adaptor in adaptors:
@@ -148,7 +150,7 @@ class SampleSheet:
             min_distances_all_barcodes.append(min(distances_within_barcode))
         return min(min_distances_all_barcodes)
 
-    def get_fastastring(self, adaptor_name: str = None) -> str:
+    def get_fastastring(self, adaptor_name: str | None = None) -> str:
         fastas = {}
         for entry in self.samplesheet:
             if entry.adaptor.name == adaptor_name or adaptor_name is None:

@@ -15,7 +15,7 @@ log = logging.getLogger("anglerfish")
 
 
 def parse_cs(
-    cs_string: str, index_seq: str, umi_before: int = 0, umi_after: int = 0
+    cs_string: str, index_seq: str, umi_before: int|None = 0, umi_after: int|None = 0
 ) -> tuple[str, int]:
     """
     Given a cs string, an index sequence, and optional UMI lengths:
@@ -42,16 +42,16 @@ def parse_cs(
 
 
 def run_minimap2(
-    fastq_in: os.PathLike,
-    index_file: os.PathLike,
-    output_paf: os.PathLike,
+    fastq_in: str,
+    index_file: str,
+    output_paf: str,
     threads: int,
     minimap_b: int = 1,
 ):
     """
     Runs Minimap2
     """
-    cmd = [
+    cmd: list[str] = [
         "minimap2",
         "--cs",  # Output the cs tag (short)
         "-c",  # Output cigar string in .paf
@@ -72,7 +72,7 @@ def run_minimap2(
 
 
 def parse_paf_lines(
-    paf: os.PathLike, min_qual: int = 1, complex_identifier: bool = False
+    paf_path: str, min_qual: int = 1, complex_identifier: bool = False
 ) -> dict[str, list[dict]]:
     """
     Read and parse one paf alignment lines.
@@ -81,30 +81,30 @@ def parse_paf_lines(
     If complex_identifier is True (default False), the keys will be on the form
     "{read}_{i5_or_i7}_{strand_str}".
     """
-    entries = {}
-    with open(paf) as paf:
+    entries: dict = {}
+    with open(paf_path) as paf:
         for paf_line in paf:
             paf_cols = paf_line.split()
             try:
                 # TODO: objectify this
-                entry = {
-                    "read": paf_cols[0],
-                    "adapter": paf_cols[5],
-                    "rlen": int(paf_cols[1]),  # read length
-                    "rstart": int(paf_cols[2]),  # start alignment on read
-                    "rend": int(paf_cols[3]),  # end alignment on read
-                    "strand": paf_cols[4],
-                    "cg": paf_cols[-2],  # cigar string
-                    "cs": paf_cols[-1],  # cigar diff string
-                    "q": int(paf_cols[11]),  # Q score
-                    "iseq": None,
-                    "sample": None,
-                }
-                read = entry["read"]
 
+                # Unpack cols to vars for type annotation
+                read: str = paf_cols[0]
+                adapter: str = paf_cols[5]
+                rlen: int = int(paf_cols[1])  # read length
+                rstart: int = int(paf_cols[2])  # start alignment on read
+                rend: int = int(paf_cols[3])  # end alignment on read
+                strand: str = paf_cols[4]
+                cg: str = paf_cols[-2]  # cigar string
+                cs: str = paf_cols[-1]  # cigar diff string
+                q: int = int(paf_cols[11])  # Q score
+                iseq: str | None = None
+                sample: str | None = None
+
+                # Determine identifier
                 if complex_identifier:
-                    i5_or_i7 = entry["adapter"].split("_")[-1]
-                    if entry["strand"] == "+":
+                    i5_or_i7 = adapter.split("_")[-1]
+                    if strand == "+":
                         strand_str = "positive"
                     else:
                         strand_str = "negative"
@@ -116,9 +116,24 @@ def parse_paf_lines(
                 log.debug(f"Could not find all paf columns: {read}")
                 continue
 
-            if entry["q"] < min_qual:
+            if q < min_qual:
                 log.debug(f"Low quality alignment: {read}")
                 continue
+
+            # Compile entry
+            entry = {
+                "read": read,
+                "adapter": adapter,
+                "rlen": rlen,
+                "rstart": rstart,
+                "rend": rend,
+                "strand": strand,
+                "cg": cg,
+                "cs": cs,
+                "q": q,
+                "iseq": iseq,
+                "sample": sample,
+            }
 
             if key in entries.keys():
                 entries[key].append(entry)
@@ -177,8 +192,8 @@ def layout_matches(
 
 
 def cluster_matches(
-    sample_adaptor: dict[tuple[str, str], list],
-    matches: tuple[dict, dict, dict, dict],
+    sample_adaptor: list[tuple[str, Adaptor, str]],
+    matches: dict,
     max_distance: int,
     i7_reversed: bool = False,
     i5_reversed: bool = False,
@@ -188,8 +203,7 @@ def cluster_matches(
     matched_bed = []
     unmatched_bed = []
     for read, alignments in matches.items():
-        i5 = False
-        i7 = False
+
         if (
             alignments[0]["adapter"][-2:] == "i5"
             and alignments[1]["adapter"][-2:] == "i7"

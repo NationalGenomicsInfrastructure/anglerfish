@@ -1,6 +1,7 @@
 import logging
 import os
 import uuid
+from typing import cast
 
 import pandas as pd
 
@@ -13,8 +14,8 @@ log = logging.getLogger("explore")
 
 
 def run_explore(
-    fastq: os.PathLike,
-    outdir: os.PathLike,
+    fastq: str,
+    outdir: str,
     threads: int,
     use_existing: bool,
     good_hit_threshold: float,
@@ -42,8 +43,8 @@ def run_explore(
     log.info("Running anglerfish explore")
     log.info(f"Run uuid {run_uuid}")
 
-    adaptors: list[Adaptor] = load_adaptors()
-    alignments: list[tuple[Adaptor, os.PathLike]] = []
+    adaptors = cast(list[Adaptor], load_adaptors())
+    alignments: list[tuple[Adaptor, str]] = []
 
     # Map all reads against all adaptors
     for adaptor in adaptors:
@@ -67,7 +68,7 @@ def run_explore(
         )
 
     # Parse alignments
-    entries = {}
+    entries: dict = {}
     adaptors_included = []
     for adaptor, aln_path in alignments:
         log.info(f"Parsing {adaptor.name}")
@@ -114,6 +115,9 @@ def run_explore(
             ["i5", "i7"], [adaptor.i5, adaptor.i7]
         ):
             if adaptor_end.has_index:
+                assert adaptor_end.len_before_index is not None
+                assert adaptor_end.len_after_index is not None
+
                 # Alignment thresholds
                 before_thres = round(adaptor_end.len_before_index * good_hit_threshold)
                 after_thres = round(adaptor_end.len_after_index * good_hit_threshold)

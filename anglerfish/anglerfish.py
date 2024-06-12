@@ -13,6 +13,7 @@ import Levenshtein as lev
 import numpy as np
 import pkg_resources
 
+from .demux.adaptor import Adaptor
 from .demux.demux import (
     cluster_matches,
     layout_matches,
@@ -86,14 +87,16 @@ def run_demux(args):
     adaptor_set: set[tuple[str, str]] = set(adaptor_tuples)
 
     # Create a dictionary with the adaptors as keys and an empty list as value
-    adaptors_sorted: dict[tuple[str, str], list] = dict([(i, []) for i in adaptor_set])
+    adaptors_sorted: dict[tuple[str, str], list[tuple[str, Adaptor, str]]] = dict(
+        [(i, []) for i in adaptor_set]
+    )
 
     # Populate the dictionary values with sample-specific information
     """
         adaptors_sorted = {
-            ( adaptor_name, ont_barcode ) : [
-                (sample_name, adaptor, fastq),
-                (sample_name, adaptor, fastq),
+             adaptor_name_str, ont_barcode_str ) : [
+                (sample_name_str, Adaptor, fastq_str),
+                (sample_name_str, Adaptor, fastq_str),
                 ...
             ],
             ...
@@ -168,7 +171,7 @@ def run_demux(args):
                 **flips[args.force_rc],
             )
             flipped_i7, flipped_i5 = flips[args.force_rc].values()
-        elif args.lenient:  # Try reverse complementing the I5 and/or i7 indices and choose the best match
+        elif args.lenient:  # Try reverse complementing the i5 and/or i7 indices and choose the best match
             flipped = {}
             results = []
             pool = multiprocessing.Pool(
