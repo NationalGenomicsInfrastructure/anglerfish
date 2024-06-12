@@ -292,6 +292,7 @@ def write_demuxedfastq(
 
     gz_buf = 131072
     fq_files = cast(list[str], glob.glob(fastq_in))
+    assert len(fq_files) > 0, f"No fastq files found looking for {fastq_in}."
     for fq in fq_files:
         with subprocess.Popen(
             ["gzip", "-c", "-d", fq], stdout=subprocess.PIPE, bufsize=gz_buf
