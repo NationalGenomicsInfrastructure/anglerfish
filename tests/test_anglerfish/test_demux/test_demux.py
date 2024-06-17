@@ -11,7 +11,7 @@ from anglerfish.demux import demux as to_test
 def fixture():
     f"""Fixture for all tests within {__file__}.
     
-    Creats a temporary directory with...
+    Creates a temporary directory with...
     - truseq.fasta: A fasta file with the truseq i7 and i5 adaptors.
     - testdata_single.fastq.gz: A single read subset from the testdata with a perfect index match (TAACTTGGTC) to the truseq i7 adaptor.
     - testdata_multiple.fastq.gz: Fabricated test data intended to test the categorization of alignments.
