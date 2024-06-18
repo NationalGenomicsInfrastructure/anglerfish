@@ -237,6 +237,8 @@ def validate_adaptors(adaptors_dict: dict):
                     f"Adaptor {adaptor_name} has an invalid sequence for {i}: {sequence_token}. Does not conform to the pattern {VALID_SEQUENCE_TOKEN_PATTERN}."
                 )
 
+    return True
+
 
 def load_adaptors(raw: bool = False) -> list[Adaptor] | dict:
     """Fetch all adaptors.
@@ -254,7 +256,7 @@ def load_adaptors(raw: bool = False) -> list[Adaptor] | dict:
         adaptors_dict = yaml.safe_load(f)
 
     # Validate input
-    validate_adaptors(adaptors_dict)
+    assert validate_adaptors(adaptors_dict) is True
 
     # Optionally, return raw dict
     if raw:

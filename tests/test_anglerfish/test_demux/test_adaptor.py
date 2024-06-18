@@ -17,7 +17,7 @@ def test_validate_adaptors():
             "i7": "CAGT<N><U9>GGAA",
         },
     }
-    assert to_test.validate_adaptors(valid_adaptors_dict) is None
+    assert to_test.validate_adaptors(valid_adaptors_dict) is True
 
     invalid_adaptors_dict = {
         "falseq_umi": {
