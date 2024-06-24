@@ -112,7 +112,7 @@ def test_run_minimap2(fixture):
 
 
 def test_parse_alns_from_path(fixture):
-    reads_alns = to_test.parse_reads_alns_from_paf(fixture["paf_single"])
+    reads_alns = to_test.map_reads_to_alns(fixture["paf_single"])
 
     for read_name, alns in reads_alns.items():
         assert read_name == "0ad8bdb6-e009-43c5-95b1-d381e699f983"
@@ -165,10 +165,10 @@ def test_parse_cs(fixture):
 def test_layout_matches(fixture):
     i5_name = "truseq_i5"
     i7_name = "truseq_i7"
-    reads_alns = to_test.parse_reads_alns_from_paf(fixture["paf_multiple"])
+    reads_alns = to_test.map_reads_to_alns(fixture["paf_multiple"])
 
     layout = to_test.categorize_matches(
-        i5_name=i5_name, i7_name=i7_name, reads_alns=reads_alns
+        i5_name=i5_name, i7_name=i7_name, reads_to_alns=reads_alns
     )
     fragments, singletons, concats, unknowns = layout
 

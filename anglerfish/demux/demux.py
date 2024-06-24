@@ -99,7 +99,7 @@ class Alignment:
         self.sample: str | None = None
 
 
-def parse_reads_alns_from_paf(
+def map_reads_to_alns(
     paf_path: str, min_qual: int = 1, complex_identifier: bool = False
 ) -> dict[str, list[Alignment]]:
     """
@@ -107,7 +107,7 @@ def parse_reads_alns_from_paf(
 
     Outputs:
 
-        reads_alns = {
+        reads_to_alns = {
             "read1": [
                 aln_read1_adaptor1_i5,
                 aln_read1_adaptor1_i7,
@@ -124,12 +124,12 @@ def parse_reads_alns_from_paf(
         }
 
     complex_identifier = False (default)
-        --> The keys will be on the form "{read}".
+        --> The keys will be on the form "{read_name}".
 
     complex_identifier = True
-        --> The keys will be on the form "{read}_{i5_or_i7}_{strand_str}".
+        --> The keys will be on the form "{read_name}_{i5_or_i7}_{strand_str}".
     """
-    reads_alns: dict = {}
+    reads_to_alns: dict = {}
     with open(paf_path) as paf:
         for paf_line in paf:
             try:
@@ -153,16 +153,16 @@ def parse_reads_alns_from_paf(
                 log.debug(f"Low quality alignment: {aln.read_name}")
                 continue
 
-            if key in reads_alns.keys():
-                reads_alns[key].append(aln)
+            if key in reads_to_alns.keys():
+                reads_to_alns[key].append(aln)
             else:
-                reads_alns[key] = [aln]
+                reads_to_alns[key] = [aln]
 
-    return reads_alns
+    return reads_to_alns
 
 
 def categorize_matches(
-    i5_name: str, i7_name: str, reads_alns: dict[str, list[Alignment]]
+    i5_name: str, i7_name: str, reads_to_alns: dict[str, list[Alignment]]
 ) -> tuple[
     dict[str, list[Alignment]],
     dict[str, list[Alignment]],
@@ -183,7 +183,7 @@ def categorize_matches(
     singletons = {}
     concats = {}
     unknowns = {}
-    for read, alns in reads_alns.items():
+    for read, alns in reads_to_alns.items():
         sorted_alns = []
         for i in range(len(alns) - 1):
             aln_i: Alignment = alns[i]

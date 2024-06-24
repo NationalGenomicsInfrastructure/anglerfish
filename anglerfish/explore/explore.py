@@ -6,7 +6,7 @@ from typing import cast
 import pandas as pd
 
 from anglerfish.demux.adaptor import Adaptor, load_adaptors
-from anglerfish.demux.demux import Alignment, parse_reads_alns_from_paf, run_minimap2
+from anglerfish.demux.demux import Alignment, map_reads_to_alns, run_minimap2
 from anglerfish.explore.entropy import calculate_relative_entropy
 
 logging.basicConfig(level=logging.INFO)
@@ -72,7 +72,7 @@ def run_explore(
     adaptors_included = []
     for adaptor, aln_path in adaptors_and_aln_paths:
         log.info(f"Parsing {adaptor.name}")
-        reads_alns: dict[str, list[Alignment]] = parse_reads_alns_from_paf(
+        reads_alns: dict[str, list[Alignment]] = map_reads_to_alns(
             aln_path, complex_identifier=True
         )
 
