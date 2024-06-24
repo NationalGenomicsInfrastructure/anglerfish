@@ -111,108 +111,64 @@ def test_run_minimap2(fixture):
     )
 
 
-def test_parse_paf_lines_simple(fixture):
-    paf_lines_simple = to_test.parse_paf_lines(fixture["paf_single"])
-    expected_simple = {
-        "0ad8bdb6-e009-43c5-95b1-d381e699f983": [
-            {
-                "read": "0ad8bdb6-e009-43c5-95b1-d381e699f983",
-                "adapter": "truseq_i7",
-                "rlen": 418,
-                "rstart": 302,
-                "rend": 374,
-                "strand": "+",
-                "cg": "cg:Z:11M2D33M7I21M",
-                "cs": "cs:Z::11-ca:6*tg:13*nt*na*na*nc*nt*nt*ng*ng*nt*nc:1*ta:1+ctagaaa:2*gt*tg:17",
-                "q": 25,
-                "iseq": None,
-                "sample": None,
-            },
-            {
-                "read": "0ad8bdb6-e009-43c5-95b1-d381e699f983",
-                "adapter": "truseq_i5",
-                "rlen": 418,
-                "rstart": 45,
-                "rend": 110,
-                "strand": "+",
-                "cg": "cg:Z:15M1D6M7I3M1I33M",
-                "cs": "cs:Z::15-a*cg:5+tcccgat:3+g:33",
-                "q": 38,
-                "iseq": None,
-                "sample": None,
-            },
-        ]
-    }
-    assert paf_lines_simple == expected_simple
+def test_parse_alns_from_path(fixture):
+    reads_alns = to_test.parse_reads_alns_from_paf(fixture["paf_single"])
 
-
-def test_parse_paf_lines_complex(fixture):
-    paf_lines_complex = to_test.parse_paf_lines(fixture["paf_single"])
-    expected_complex = {
-        "0ad8bdb6-e009-43c5-95b1-d381e699f983": [
-            {
-                "read": "0ad8bdb6-e009-43c5-95b1-d381e699f983",
-                "adapter": "truseq_i7",
-                "rlen": 418,
-                "rstart": 302,
-                "rend": 374,
-                "strand": "+",
-                "cg": "cg:Z:11M2D33M7I21M",
-                "cs": "cs:Z::11-ca:6*tg:13*nt*na*na*nc*nt*nt*ng*ng*nt*nc:1*ta:1+ctagaaa:2*gt*tg:17",
-                "q": 25,
-                "iseq": None,
-                "sample": None,
-            },
-            {
-                "read": "0ad8bdb6-e009-43c5-95b1-d381e699f983",
-                "adapter": "truseq_i5",
-                "rlen": 418,
-                "rstart": 45,
-                "rend": 110,
-                "strand": "+",
-                "cg": "cg:Z:15M1D6M7I3M1I33M",
-                "cs": "cs:Z::15-a*cg:5+tcccgat:3+g:33",
-                "q": 38,
-                "iseq": None,
-                "sample": None,
-            },
-        ]
-    }
-    assert paf_lines_complex == expected_complex
+    for read_name, alns in reads_alns.items():
+        assert read_name == "0ad8bdb6-e009-43c5-95b1-d381e699f983"
+        for aln in alns:
+            if aln.adapter_name == "truseq_i7":
+                assert aln.read_name == "0ad8bdb6-e009-43c5-95b1-d381e699f983"
+                assert aln.adapter_name == "truseq_i7"
+                assert aln.read_len == 418
+                assert aln.read_start == 302
+                assert aln.read_end == 374
+                assert aln.read_strand == "+"
+                assert aln.cg == "cg:Z:11M2D33M7I21M"
+                assert (
+                    aln.cs
+                    == "cs:Z::11-ca:6*tg:13*nt*na*na*nc*nt*nt*ng*ng*nt*nc:1*ta:1+ctagaaa:2*gt*tg:17"
+                )
+                assert aln.q == 25
+                assert aln.iseq is None
+                assert aln.sample is None
+            else:
+                assert aln.read_name == "0ad8bdb6-e009-43c5-95b1-d381e699f983"
+                assert aln.adapter_name == "truseq_i5"
+                assert aln.read_len == 418
+                assert aln.read_start == 45
+                assert aln.read_end == 110
+                assert aln.read_strand == "+"
+                assert aln.cg == "cg:Z:15M1D6M7I3M1I33M"
+                assert aln.cs == "cs:Z::15-a*cg:5+tcccgat:3+g:33"
+                assert aln.q == 38
+                assert aln.iseq is None
+                assert aln.sample is None
 
 
 def test_parse_cs(fixture):
-    paf_lines_simple = to_test.parse_paf_lines(fixture["paf_single"])
+    test_cs_str = (
+        "cs:Z::11-ca:6*tg:13*nt*na*na*nc*nt*nt*ng*ng*nt*nc:1*ta:1+ctagaaa:2*gt*tg:17"
+    )
+    expected_cs_parsed = ("taacttggtc", 0)
 
-    for read_name, alignments in paf_lines_simple.items():
-        for alignment in alignments:
-            cs_string = alignment["cs"]
-            cs_parsed = to_test.parse_cs(
-                cs_string=cs_string,
-                index_seq=fixture["index"],
-                umi_before=0,
-                umi_after=0,
-            )
+    cs_parsed = to_test.parse_cs(
+        cs_string=test_cs_str,
+        index_seq=fixture["index"],
+        umi_before=0,
+        umi_after=0,
+    )
 
-            if alignment["adapter"] == "truseq_i7":
-                # Perfect match to index
-                assert cs_parsed[0] == fixture["index"].lower()
-                assert cs_parsed[1] == 0
-            elif alignment["adapter"] == "truseq_i5":
-                # No index, distance the length of all concatenated substitutions of the cs string
-                assert cs_parsed[0] == ""
-                assert cs_parsed[1] == 10
-            else:
-                raise AssertionError("Case not covered.")
+    assert cs_parsed == expected_cs_parsed
 
 
 def test_layout_matches(fixture):
     i5_name = "truseq_i5"
     i7_name = "truseq_i7"
-    paf_entries = to_test.parse_paf_lines(fixture["paf_multiple"])
+    reads_alns = to_test.parse_reads_alns_from_paf(fixture["paf_multiple"])
 
-    layout = to_test.layout_matches(
-        i5_name=i5_name, i7_name=i7_name, paf_entries=paf_entries
+    layout = to_test.categorize_matches(
+        i5_name=i5_name, i7_name=i7_name, reads_alns=reads_alns
     )
     fragments, singletons, concats, unknowns = layout
 

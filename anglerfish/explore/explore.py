@@ -6,7 +6,7 @@ from typing import cast
 import pandas as pd
 
 from anglerfish.demux.adaptor import Adaptor, load_adaptors
-from anglerfish.demux.demux import parse_paf_lines, run_minimap2
+from anglerfish.demux.demux import Alignment, parse_reads_alns_from_paf, run_minimap2
 from anglerfish.explore.entropy import calculate_relative_entropy
 
 logging.basicConfig(level=logging.INFO)
@@ -44,13 +44,13 @@ def run_explore(
     log.info(f"Run uuid {run_uuid}")
 
     adaptors = cast(list[Adaptor], load_adaptors())
-    alignments: list[tuple[Adaptor, str]] = []
+    adaptors_and_aln_paths: list[tuple[Adaptor, str]] = []
 
     # Map all reads against all adaptors
     for adaptor in adaptors:
         # Align
         aln_path = os.path.join(outdir, f"{adaptor.name}.paf")
-        alignments.append((adaptor, aln_path))
+        adaptors_and_aln_paths.append((adaptor, aln_path))
         if os.path.exists(aln_path) and use_existing:
             log.info(f"Skipping {adaptor.name} as alignment already exists")
             continue
@@ -70,21 +70,18 @@ def run_explore(
     # Parse alignments
     entries: dict = {}
     adaptors_included = []
-    for adaptor, aln_path in alignments:
+    for adaptor, aln_path in adaptors_and_aln_paths:
         log.info(f"Parsing {adaptor.name}")
-        aln_dict_with_lists: dict[str, list[dict]] = parse_paf_lines(
+        reads_alns: dict[str, list[Alignment]] = parse_reads_alns_from_paf(
             aln_path, complex_identifier=True
         )
 
         # Choose only the highest scoring alignment for each combination of read, adaptor end and strand
-        aln_dict = dict(
-            [
-                (aln_name, max(aln_dicts, key=lambda x: x["q"]))
-                for aln_name, aln_dicts in aln_dict_with_lists.items()
-            ]
-        )
-
-        df = pd.DataFrame.from_dict(aln_dict, orient="index")
+        reads_to_highest_q_aln_dict: dict[str, dict] = {}
+        for aln_name, alns in reads_alns.items():
+            highest_q_aln = max(alns, key=lambda aln: aln.q)
+            reads_to_highest_q_aln_dict[aln_name] = vars(highest_q_aln)
+        df = pd.DataFrame.from_dict(reads_to_highest_q_aln_dict, orient="index")
         nr_good_hits = {}
 
         # Match Insert Match = mim
@@ -125,7 +122,7 @@ def run_explore(
                 insert_thres_high = insert_thres_high
 
                 requirements = (
-                    (df_mim["adapter"] == f"{adaptor.name}_{adaptor_end_name}")
+                    (df_mim["adapter_name"] == f"{adaptor.name}_{adaptor_end_name}")
                     & (df_mim["match_1_len"] >= (before_thres))
                     & (df_mim["insert_len"] >= insert_thres_low)
                     & (df_mim["insert_len"] <= insert_thres_high)
@@ -155,8 +152,8 @@ def run_explore(
 
             # Filter multiple hits per read and adaptor end
             df_good_hits = df_good_hits.sort_values(
-                by=["read", "match_1_len"], ascending=False
-            ).drop_duplicates(subset=["read", "adapter"], keep="first")
+                by=["read_name", "match_1_len"], ascending=False
+            ).drop_duplicates(subset=["read_name", "adapter_name"], keep="first")
 
             if adaptor.name not in entries.keys():
                 entries[adaptor.name] = {}

@@ -15,9 +15,10 @@ import pkg_resources
 
 from .demux.adaptor import Adaptor
 from .demux.demux import (
+    Alignment,
+    categorize_matches,
     cluster_matches,
-    layout_matches,
-    parse_paf_lines,
+    parse_reads_alns_from_paf,
     run_minimap2,
     write_demuxedfastq,
 )
@@ -138,12 +139,12 @@ def run_demux(args):
                 for i in f:
                     num_fq += 1
         num_fq = int(num_fq / 4)
-        paf_entries = parse_paf_lines(align_path)
+        reads_alns: dict[str, list[Alignment]] = parse_reads_alns_from_paf(align_path)
 
         # Make stats
         log.info(f" Searching for adaptor hits in {adaptor_bc_name}")
-        fragments, singletons, concats, unknowns = layout_matches(
-            adaptor_name + "_i5", adaptor_name + "_i7", paf_entries
+        fragments, singletons, concats, unknowns = categorize_matches(
+            adaptor_name + "_i5", adaptor_name + "_i7", reads_alns
         )
         stats = AlignmentStat(adaptor_bc_name)
         stats.compute_pafstats(num_fq, fragments, singletons, concats, unknowns)
