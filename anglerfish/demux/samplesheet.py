@@ -1,5 +1,6 @@
 import csv
 import glob
+import os
 import re
 from dataclasses import dataclass
 from itertools import combinations
@@ -31,8 +32,7 @@ class SampleSheet:
         """
 
         self.samplesheet = []
-        try:
-            csvfile = open(input_csv)
+        with open(input_csv) as csvfile:
             csv_first_line: str = csvfile.readline()
             dialect = csv.Sniffer().sniff(csv_first_line, ",;\t")
             csvfile.seek(0)
@@ -105,11 +105,6 @@ class SampleSheet:
                     + " please run anglerfish separately for each set."
                 )
 
-        except:
-            raise
-        finally:
-            csvfile.close()
-
     def minimum_bc_distance(self) -> int:
         """Compute the minimum edit distance between all barcodes in samplesheet,
         or within each ONT barcode group.
@@ -164,6 +159,38 @@ class SampleSheet:
             outstr += f">{key}\n{seq}\n"
 
         return outstr
+
+    def map_adaptor_barcode_pairs_to_sample_info(
+        self,
+    ) -> dict[tuple[str, str], list[tuple[str, Adaptor, str]]]:
+        """Create a map of unique adaptor-barcode pairings to a list of tuples
+        each containing the necessary information to process a given sample.
+
+            samplesheet_map = {
+                adaptor_name_str, ont_barcode_str ) : [    # Unique adaptor-barcode pairing
+                    (sample1_name_str, Adaptor, fastq1_str),  # Info to process sample1
+                    (sample2_name_str, Adaptor, fastq2_str),  # Info to process sample2
+                    ...
+                ],
+                ...
+            }
+        """
+
+        # Get a set corresponding to the unique pairings of adaptors and ONT barcodes in the samplesheet
+        adaptor_barcode_tuples: set[tuple[str, str]] = set(
+            [(entry.adaptor.name, entry.ont_barcode) for entry in self]
+        )
+
+        # Map the unique adaptor-barcode pairings to a list of tuples containing the sample name, Adaptor object, and fastq path
+        samplesheet_map: dict[tuple[str, str], list[tuple[str, Adaptor, str]]] = dict(
+            [(i, []) for i in adaptor_barcode_tuples]
+        )
+        for entry in self:
+            samplesheet_map[(entry.adaptor.name, entry.ont_barcode)].append(
+                (entry.sample_name, entry.adaptor, os.path.abspath(entry.fastq))
+            )
+
+        return samplesheet_map
 
     def __iter__(self):
         return iter(self.samplesheet)
