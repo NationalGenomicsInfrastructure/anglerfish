@@ -87,16 +87,16 @@ class Alignment:
 
         # Unpack cols to vars for type annotation
         self.read_name: str = paf_cols[0]
-        self.adapter_name: str = paf_cols[5]
         self.read_len: int = int(paf_cols[1])  # read length
         self.read_start: int = int(paf_cols[2])  # start alignment on read
         self.read_end: int = int(paf_cols[3])  # end alignment on read
         self.read_strand: str = paf_cols[4]
+        self.adapter_name: str = paf_cols[5]
+
+        self.q: int = int(paf_cols[11])  # Q score
+
         self.cg: str = paf_cols[-2]  # cigar string
         self.cs: str = paf_cols[-1]  # cigar diff string
-        self.q: int = int(paf_cols[11])  # Q score
-        self.iseq: str | None = None
-        self.sample: str | None = None
 
 
 def map_reads_to_alns(

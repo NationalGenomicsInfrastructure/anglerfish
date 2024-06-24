@@ -130,8 +130,6 @@ def test_parse_alns_from_path(fixture):
                     == "cs:Z::11-ca:6*tg:13*nt*na*na*nc*nt*nt*ng*ng*nt*nc:1*ta:1+ctagaaa:2*gt*tg:17"
                 )
                 assert aln.q == 25
-                assert aln.iseq is None
-                assert aln.sample is None
             else:
                 assert aln.read_name == "0ad8bdb6-e009-43c5-95b1-d381e699f983"
                 assert aln.adapter_name == "truseq_i5"
@@ -142,8 +140,6 @@ def test_parse_alns_from_path(fixture):
                 assert aln.cg == "cg:Z:15M1D6M7I3M1I33M"
                 assert aln.cs == "cs:Z::15-a*cg:5+tcccgat:3+g:33"
                 assert aln.q == 38
-                assert aln.iseq is None
-                assert aln.sample is None
 
 
 def test_parse_cs(fixture):
