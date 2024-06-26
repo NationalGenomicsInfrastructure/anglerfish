@@ -1,10 +1,11 @@
 import logging
 import os
 import uuid
+from typing import cast
 
 import pandas as pd
 
-from anglerfish.demux.adaptor import load_adaptors
+from anglerfish.demux.adaptor import Adaptor, load_adaptors
 from anglerfish.demux.demux import parse_paf_lines, run_minimap2
 from anglerfish.explore.entropy import calculate_relative_entropy
 
@@ -13,17 +14,17 @@ log = logging.getLogger("explore")
 
 
 def run_explore(
-    fastq,
-    outdir,
-    threads,
-    use_existing,
-    good_hit_threshold,
-    insert_thres_low,
-    insert_thres_high,
-    minimap_b,
-    min_hits_per_adaptor,
-    umi_threshold,
-    kmer_length,
+    fastq: str,
+    outdir: str,
+    threads: int,
+    use_existing: bool,
+    good_hit_threshold: float,
+    insert_thres_low: int,
+    insert_thres_high: int,
+    minimap_b: int,
+    min_hits_per_adaptor: int,
+    umi_threshold: float,
+    kmer_length: int,
 ):
     # Setup a run directory
     run_uuid = str(uuid.uuid4())
@@ -42,36 +43,45 @@ def run_explore(
     log.info("Running anglerfish explore")
     log.info(f"Run uuid {run_uuid}")
 
-    adaptors = load_adaptors()
-    alignments = []
+    adaptors = cast(list[Adaptor], load_adaptors())
+    alignments: list[tuple[Adaptor, str]] = []
 
     # Map all reads against all adaptors
     for adaptor in adaptors:
-        adaptor_name = adaptor.name
-
         # Align
-        aln_path = os.path.join(outdir, f"{adaptor_name}.paf")
+        aln_path = os.path.join(outdir, f"{adaptor.name}.paf")
         alignments.append((adaptor, aln_path))
         if os.path.exists(aln_path) and use_existing:
-            log.info(f"Skipping {adaptor_name} as alignment already exists")
+            log.info(f"Skipping {adaptor.name} as alignment already exists")
             continue
-        adaptor_path = os.path.join(outdir, f"{adaptor_name}.fasta")
+        adaptor_path = os.path.join(outdir, f"{adaptor.name}.fasta")
         with open(adaptor_path, "w") as f:
             f.write(adaptor.get_fastastring(insert_Ns=False))
 
-        log.info(f"Aligning {adaptor_name}")
-        run_minimap2(fastq, adaptor_path, aln_path, threads, minimap_b)
+        log.info(f"Aligning {adaptor.name}")
+        run_minimap2(
+            fastq_in=fastq,
+            index_file=adaptor_path,
+            output_paf=aln_path,
+            threads=threads,
+            minimap_b=minimap_b,
+        )
 
     # Parse alignments
-    entries = {}
+    entries: dict = {}
     adaptors_included = []
     for adaptor, aln_path in alignments:
         log.info(f"Parsing {adaptor.name}")
-        aln_dict_with_lists = parse_paf_lines(aln_path, complex_identifier=True)
+        aln_dict_with_lists: dict[str, list[dict]] = parse_paf_lines(
+            aln_path, complex_identifier=True
+        )
 
         # Choose only the highest scoring alignment for each combination of read, adaptor end and strand
         aln_dict = dict(
-            [(k, max(v, key=lambda x: x["q"])) for k, v in aln_dict_with_lists.items()]
+            [
+                (aln_name, max(aln_dicts, key=lambda x: x["q"]))
+                for aln_name, aln_dicts in aln_dict_with_lists.items()
+            ]
         )
 
         df = pd.DataFrame.from_dict(aln_dict, orient="index")
@@ -105,6 +115,9 @@ def run_explore(
             ["i5", "i7"], [adaptor.i5, adaptor.i7]
         ):
             if adaptor_end.has_index:
+                assert adaptor_end.len_before_index is not None
+                assert adaptor_end.len_after_index is not None
+
                 # Alignment thresholds
                 before_thres = round(adaptor_end.len_before_index * good_hit_threshold)
                 after_thres = round(adaptor_end.len_after_index * good_hit_threshold)

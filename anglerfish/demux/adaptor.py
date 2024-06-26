@@ -63,10 +63,36 @@ class AdaptorPart:
     """This class is used for the i5 or i7 adaptor."""
 
     def __init__(self, sequence_token: str, name: str, index_seq: str | None):
+        ## Type declaration of attributes to be assigned upon instantiation
+        # Attributes from arguments
+        self.name: str
+        self.sequence_token: str
+        self.index_seq: str | None
+
+        # Index attributes
+        self.has_index: bool
+        self.len_index: int | None
+        self.len_before_index: int | None
+        self.len_after_index: int | None
+
+        # UMI attributes
+        self.has_umi: bool
+        self.len_umi: int | None
+        self.len_umi_before_index: int | None
+        self.len_umi_after_index: int | None
+
+        # Length attributes
+        self.len_total: int | None
+        self.len_constant: int
+
+        # Instantiation outsorced to private method
+        self._setup(sequence_token, name, index_seq)
+
+    def _setup(self, sequence_token: str, name: str, index_seq: str | None):
         # Assign attributes from args
-        self.sequence_token: str = sequence_token
-        self.name: str = name
-        self.index_seq: str | None = index_seq
+        self.sequence_token = sequence_token
+        self.name = name
+        self.index_seq = index_seq
 
         # Index bool and len
         if has_match(INDEX_TOKEN, self.sequence_token):
@@ -76,6 +102,10 @@ class AdaptorPart:
             self.len_index = len(index_seq) if index_seq else None
 
         else:
+            if self.index_seq is not None:
+                raise UserWarning(
+                    "Index sequence specified, but no index token found in adaptor sequence."
+                )
             self.has_index = False
             self.len_index = 0
 
@@ -87,20 +117,12 @@ class AdaptorPart:
             )
         elif len(umi_tokens) == 1:
             self.has_umi = True
-            self.len_umi = int(
-                re.search(UMI_LENGTH_TOKEN, self.sequence_token).group(1)
-            )
+            umi_token_search = re.search(UMI_LENGTH_TOKEN, self.sequence_token)
+            assert isinstance(umi_token_search, re.Match)
+            self.len_umi = int(umi_token_search.group(1))
         else:
             self.has_umi = False
             self.len_umi = 0
-
-        # Type declaration of attributes to be assigned
-        self.len_before_index: int | None
-        self.len_after_index: int | None
-        self.len_umi_before_index: int | None
-        self.len_umi_after_index: int | None
-        self.len_total: int | None
-        self.len_constant: int
 
         # Lengths
         if self.has_index and self.has_umi:
@@ -149,7 +171,12 @@ class AdaptorPart:
             self.len_before_index = None
             self.len_after_index = None
 
-        self.len_total = len(self.get_mask(insert_Ns=True)) if self.index_seq else None
+        if (
+            self.has_index is True and self.index_seq is not None
+        ) or self.has_index is False:
+            self.len_total = len(self.get_mask(insert_Ns=True))
+        else:
+            self.len_total = None
         self.len_constant = len(self.get_mask(insert_Ns=False))
 
     def get_mask(self, insert_Ns: bool = True) -> str:
@@ -165,11 +192,12 @@ class AdaptorPart:
             else 0
         )
 
-        umi_mask_length = (
-            max(self.len_umi_after_index, self.len_umi_before_index)
-            if insert_Ns and self.has_umi
-            else 0
-        )
+        if insert_Ns and self.has_umi:
+            assert self.len_umi_before_index is not None
+            assert self.len_umi_after_index is not None
+            umi_mask_length = max(self.len_umi_after_index, self.len_umi_before_index)
+        else:
+            umi_mask_length = 0
 
         # Test if the index is specified in the adaptor sequence when it shouldn't be
         if (
@@ -189,7 +217,7 @@ class AdaptorPart:
             return self.sequence_token
 
 
-def has_match(pattern: re.Pattern, query: str) -> bool:
+def has_match(pattern: re.Pattern | str, query: str) -> bool:
     """General function to check if a string contains a pattern."""
     match = re.search(pattern, query)
     if match is None:
@@ -209,6 +237,8 @@ def validate_adaptors(adaptors_dict: dict):
                     f"Adaptor {adaptor_name} has an invalid sequence for {i}: {sequence_token}. Does not conform to the pattern {VALID_SEQUENCE_TOKEN_PATTERN}."
                 )
 
+    return True
+
 
 def load_adaptors(raw: bool = False) -> list[Adaptor] | dict:
     """Fetch all adaptors.
@@ -226,7 +256,7 @@ def load_adaptors(raw: bool = False) -> list[Adaptor] | dict:
         adaptors_dict = yaml.safe_load(f)
 
     # Validate input
-    validate_adaptors(adaptors_dict)
+    assert validate_adaptors(adaptors_dict) is True
 
     # Optionally, return raw dict
     if raw:

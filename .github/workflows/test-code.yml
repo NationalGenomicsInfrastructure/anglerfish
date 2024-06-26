@@ -1,9 +1,13 @@
-name: Anglerfish
+name: test-code
 on: [push, pull_request]
 
+# Cancel if a newer run is started
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  run_anglerfish:
-    name: Anglerfish py-${{ matrix.python-version }}
+  run_pytest:
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -27,20 +31,14 @@ jobs:
         run: |
           python -m pip install .
 
-      # Run anglerfish --help
+      # Install Pytest
       - shell: bash -l {0}
-        name: Test anglerfish
+        name: Install Pytest
         run: |
-          anglerfish --help
+          python -m pip install pytest
 
-      # Run anglerfish using test data
+      # Run Pytest
       - shell: bash -l {0}
-        name: Run anglerfish with test data
+        name: Run Pytest
         run: |
-          anglerfish run -s testdata/samples.csv
-
-      # Run anglerfish explore
-      - shell: bash -l {0}
-        name: Run anglerfish explore
-        run: |
-          anglerfish explore -f testdata/BC18_P14351_1001.fastq.gz -o explore_output
+          pytest .

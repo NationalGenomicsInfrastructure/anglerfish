@@ -30,7 +30,7 @@ setup(
     author_email="remi-andre.olsen@scilifelab.se",
     url="https://github.com/remiolsen/anglerfish",
     license="MIT",
-    python_requires=">=3.10",
+    python_requires=">=3.12",
     packages=find_packages(),
     package_data={"": ["config/adaptors.yaml"]},
     # Read requirements.txt
