@@ -111,7 +111,7 @@ def test_run_minimap2(fixture):
     )
 
 
-def test_parse_alns_from_path(fixture):
+def test_map_reads_to_alns(fixture):
     reads_alns = to_test.map_reads_to_alns(fixture["paf_single"])
 
     for read_name, alns in reads_alns.items():
@@ -158,7 +158,7 @@ def test_parse_cs(fixture):
     assert cs_parsed == expected_cs_parsed
 
 
-def test_layout_matches(fixture):
+def test_categorize_matches(fixture):
     i5_name = "truseq_i5"
     i7_name = "truseq_i7"
     reads_alns = to_test.map_reads_to_alns(fixture["paf_multiple"])
