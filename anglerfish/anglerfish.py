@@ -95,41 +95,40 @@ def run_demux(args):
         exit()
     log.debug(f"Samplesheet bc_dist == {min_distance}")
 
-    # Get samplesheet map
-    samplesheet_map: dict[tuple[str, str], list[tuple[str, Adaptor, str]]] = (
-        ss.map_adaptor_barcode_pairs_to_sample_info()
-    )
+    # Get adaptor-barcode combinations from samplesheet
+    adaptor_barcode_sets = ss.get_adaptor_barcode_sets()
 
-    # Iterate across samplesheet map and process samples
+    # Iterate across samplesheet rows conforming to the adaptor-barcode combinations
     out_fastqs = []
-    for key, sample_maps in samplesheet_map.items():
-        adaptor_name, ont_barcode = key
+    for adaptor_name, ont_barcode in adaptor_barcode_sets:
+
+        subset_rows = ss.subset_rows(adaptor_name=adaptor_name, ont_barcode=ont_barcode)
 
         # Grab the fastq path of the first sample
-        fastq_path = sample_maps[0][2]
+        fastq_path = subset_rows[0].fastq
+        fastq_files = glob.glob(fastq_path) 
 
         # If there are multiple ONT barcodes, we need to add the ONT barcode to the adaptor name
         if ont_barcode:
             adaptor_bc_name = f"{adaptor_name}_{ont_barcode}"
         else:
             adaptor_bc_name = adaptor_name
-        fastq_files = glob.glob(fastq_path)
-
+            
         # Align
         alignment_path: str = os.path.join(args.out_fastq, f"{adaptor_bc_name}.paf")
         adaptor_fasta_path: str = os.path.join(args.out_fastq, f"{adaptor_name}.fasta")
         with open(adaptor_fasta_path, "w") as f:
             f.write(ss.get_fastastring(adaptor_name))
-        for fq in fastq_files:
-            run_minimap2(fq, adaptor_fasta_path, alignment_path, args.threads)
+        for fq_file in fastq_files:
+            run_minimap2(fq_file, adaptor_fasta_path, alignment_path, args.threads)
 
         # Easy line count in input fastq files
-        num_fq = 0
-        for fq in fastq_files:
-            with gzip.open(fq, "rb") as f:
+        num_fq_lines = 0
+        for fq_file in fastq_files:
+            with gzip.open(fq_file, "rb") as f:
                 for i in f:
-                    num_fq += 1
-        num_fq = int(num_fq / 4)
+                    num_fq_lines += 1
+        num_fq = int(num_fq_lines / 4)
         reads_to_alns: dict[str, list[Alignment]] = map_reads_to_alns(alignment_path)
 
         # Make stats
@@ -159,7 +158,7 @@ def run_demux(args):
                 f" Force reverse complementing {args.force_rc} index for adaptor {adaptor_name}. Lenient mode is disabled"
             )
             no_matches, matches = cluster_matches(
-                samplesheet_map[key],
+                subset_rows,
                 fragments,
                 args.max_distance,
                 **flips[args.force_rc],
@@ -176,7 +175,7 @@ def run_demux(args):
                 spawn = pool.apply_async(
                     cluster_matches,
                     args=(
-                        samplesheet_map[key],
+                        subset_rows,
                         fragments,
                         args.max_distance,
                         rev["i7_reversed"],
@@ -215,7 +214,7 @@ def run_demux(args):
                 no_matches, matches = flipped["original"]
         else:
             no_matches, matches = cluster_matches(
-                samplesheet_map[key], fragments, args.max_distance
+                subset_rows, fragments, args.max_distance
             )
 
         out_pool = []

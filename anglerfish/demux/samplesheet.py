@@ -160,37 +160,31 @@ class SampleSheet:
 
         return outstr
 
-    def map_adaptor_barcode_pairs_to_sample_info(
+    def get_adaptor_barcode_sets(
         self,
-    ) -> dict[tuple[str, str], list[tuple[str, Adaptor, str]]]:
-        """Create a map of unique adaptor-barcode pairings to a list of tuples
-        each containing the necessary information to process a given sample.
-
-            samplesheet_map = {
-                adaptor_name_str, ont_barcode_str ) : [    # Unique adaptor-barcode pairing
-                    (sample1_name_str, Adaptor, fastq1_str),  # Info to process sample1
-                    (sample2_name_str, Adaptor, fastq2_str),  # Info to process sample2
-                    ...
-                ],
-                ...
-            }
-        """
+    ) -> list[tuple[str, str]]:
+        """Return a set of unique adaptor-barcode pairings in the samplesheet."""
 
         # Get a set corresponding to the unique pairings of adaptors and ONT barcodes in the samplesheet
-        adaptor_barcode_tuples: set[tuple[str, str]] = set(
-            [(entry.adaptor.name, entry.ont_barcode) for entry in self]
+        adaptor_barcode_sets: list[tuple[str, str]] = list(
+            set([(row.adaptor.name, row.ont_barcode) for row in self.rows])
         )
 
-        # Map the unique adaptor-barcode pairings to a list of tuples containing the sample name, Adaptor object, and fastq path
-        samplesheet_map: dict[tuple[str, str], list[tuple[str, Adaptor, str]]] = dict(
-            [(i, []) for i in adaptor_barcode_tuples]
-        )
-        for entry in self:
-            samplesheet_map[(entry.adaptor.name, entry.ont_barcode)].append(
-                (entry.sample_name, entry.adaptor, os.path.abspath(entry.fastq))
-            )
+        return adaptor_barcode_sets
 
-        return samplesheet_map
+    def subset_rows(self, adaptor_name: str, ont_barcode: str|None) -> list[SampleSheetEntry]:
+        """Return a subset of samplesheet rows based on logical criteria."""
+        
+        subset_rows = []
+
+        for row in self.rows:
+            if row.adaptor.name == adaptor_name and ont_barcode == row.ont_barcode:
+                subset_rows.append(row)
+            else:
+                continue
+
+        return subset_rows
+
 
     def __iter__(self):
         return iter(self.rows)

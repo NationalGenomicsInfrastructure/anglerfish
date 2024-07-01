@@ -10,7 +10,7 @@ import Levenshtein as lev
 from Bio.Seq import Seq
 from Bio.SeqIO.QualityIO import FastqGeneralIterator
 
-from anglerfish.demux.adaptor import Adaptor
+from anglerfish.demux.samplesheet import SampleSheetEntry
 
 log = logging.getLogger("anglerfish")
 
@@ -217,7 +217,7 @@ def categorize_matches(
 
 
 def cluster_matches(
-    sample_adaptor: list[tuple[str, Adaptor, str]],
+    rows: list[SampleSheetEntry],
     matches: dict,
     max_distance: int,
     i7_reversed: bool = False,
@@ -247,29 +247,30 @@ def cluster_matches(
         dists = []
         fi5 = ""
         fi7 = ""
-        for _, adaptor, _ in sample_adaptor:
-            if adaptor.i5.index_seq is not None:
-                i5_seq = adaptor.i5.index_seq
+        for row in rows:
+
+            if row.adaptor.i5.index_seq is not None:
+                i5_seq = row.adaptor.i5.index_seq
                 if i5_reversed and i5_seq is not None:
                     i5_seq = str(Seq(i5_seq).reverse_complement())
                 fi5, d1 = parse_cs(
                     i5_aln.cs,
                     i5_seq,
-                    adaptor.i5.len_umi_before_index,
-                    adaptor.i5.len_umi_after_index,
+                    row.adaptor.i5.len_umi_before_index,
+                    row.adaptor.i5.len_umi_after_index,
                 )
             else:
                 d1 = 0
 
-            if adaptor.i7.index_seq is not None:
-                i7_seq = adaptor.i7.index_seq
+            if row.adaptor.i7.index_seq is not None:
+                i7_seq = row.adaptor.i7.index_seq
                 if i7_reversed and i7_seq is not None:
                     i7_seq = str(Seq(i7_seq).reverse_complement())
                 fi7, d2 = parse_cs(
                     i7_aln.cs,
                     i7_seq,
-                    adaptor.i7.len_umi_before_index,
-                    adaptor.i7.len_umi_after_index,
+                    row.adaptor.i7.len_umi_before_index,
+                    row.adaptor.i7.len_umi_after_index,
                 )
             else:
                 d2 = 0
@@ -286,15 +287,15 @@ def cluster_matches(
             continue
         if dists[index_min] > max_distance:
             # Find only full length i7(+i5) adaptor combos. Basically a list of "known unknowns"
-            if len(fi7) + len(fi5) == len(adaptor.i7.index_seq or "") + len(
-                adaptor.i5.index_seq or ""
+            if len(fi7) + len(fi5) == len(row.adaptor.i7.index_seq or "") + len(
+                row.adaptor.i5.index_seq or ""
             ):
                 fi75 = "+".join([i for i in [fi7, fi5] if not i == ""])
                 unmatched_bed.append([read, start_insert, end_insert, fi75, "999", "."])
             continue
         matched[read] = alignments
         matched_bed.append(
-            [read, start_insert, end_insert, sample_adaptor[index_min][0], "999", "."]
+            [read, start_insert, end_insert, dists[index_min][0], "999", "."]
         )
     log.debug(f" Matched {len(matched)} reads, unmatched {len(unmatched_bed)} reads")
     return unmatched_bed, matched_bed
