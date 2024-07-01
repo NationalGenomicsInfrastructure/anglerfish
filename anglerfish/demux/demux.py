@@ -40,8 +40,9 @@ def parse_cs(
     else:
         bases_spanning_index_mask = bases_spanning_mask
     # Return the index and the Levenshtein distance between it and the presumed index region of the read
-    return bases_spanning_index_mask, lev.distance(
-        index_seq.lower(), bases_spanning_index_mask
+    return (
+        bases_spanning_index_mask,
+        lev.distance(index_seq.lower(), bases_spanning_index_mask),
     )
 
 
