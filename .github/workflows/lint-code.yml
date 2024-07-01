@@ -81,7 +81,7 @@ jobs:
 
       - name: Run pipreqs
         run: |
-          pipreqs --savepath pipreqs.txt taca 2>&1 | tee pipreqs_output.log
+          pipreqs --savepath pipreqs.txt 2>&1 | tee pipreqs_output.log
           if grep -q 'WARNING: Package .* does not exist or network problems' pipreqs_output.log; then
             missing_packages=$(grep 'WARNING: Package .* does not exist or network problems' pipreqs_output.log | sed -E 's/.*Package "(.*)" does not exist.*/\1/')
             echo "ERROR: Add unresolved packages to requirements. Missing package(s): $missing_packages. Example: '<pkg> @ git+https://github.com/<author>/<repo>.git'"
