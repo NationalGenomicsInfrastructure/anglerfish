@@ -31,7 +31,7 @@ class SampleSheet:
         fastq files are located in "barcode##" folders.
         """
 
-        self.samplesheet = []
+        self.rows = []
         with open(input_csv) as csvfile:
             csv_first_line: str = csvfile.readline()
             dialect = csv.Sniffer().sniff(csv_first_line, ",;\t")
@@ -83,7 +83,7 @@ class SampleSheet:
                     row["fastq_path"],
                     ont_barcode,
                 )
-                self.samplesheet.append(ss_entry)
+                self.rows.append(ss_entry)
                 row_number += 1
 
             # Explanation: Don't mess around with the globs too much.
@@ -111,7 +111,7 @@ class SampleSheet:
         """
 
         ont_bc_to_adaptors: dict = {}
-        for entry in self.samplesheet:
+        for entry in self.rows:
             if entry.ont_barcode in ont_bc_to_adaptors:
                 ont_bc_to_adaptors[entry.ont_barcode].append(entry.adaptor)
             else:
@@ -147,7 +147,7 @@ class SampleSheet:
 
     def get_fastastring(self, adaptor_name: str | None = None) -> str:
         fastas = {}
-        for entry in self.samplesheet:
+        for entry in self.rows:
             if entry.adaptor.name == adaptor_name or adaptor_name is None:
                 fastas[entry.adaptor.name + "_i7"] = entry.adaptor.i7.get_mask()
                 fastas[entry.adaptor.name + "_i5"] = entry.adaptor.i5.get_mask()
@@ -193,7 +193,7 @@ class SampleSheet:
         return samplesheet_map
 
     def __iter__(self):
-        return iter(self.samplesheet)
+        return iter(self.rows)
 
     def __next__(self):
         pass
