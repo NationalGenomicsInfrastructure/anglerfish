@@ -104,7 +104,8 @@ def run_demux(args):
 
         subset_rows = ss.subset_rows(adaptor_name=adaptor_name, ont_barcode=ont_barcode)
 
-        # Grab the fastq path of the first sample
+        # Grab the fastq files for the current entries
+        assert all([subset_rows[0].fastq] == [row.fastq for row in subset_rows])
         fastq_path = subset_rows[0].fastq
         fastq_files = glob.glob(fastq_path) 
 
