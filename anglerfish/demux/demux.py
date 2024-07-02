@@ -236,13 +236,12 @@ def cluster_matches(
         matched_bed: list of bed coordinates for matched reads
     )
     """
-    
-    # Instantiate objects to fill
-    matched = {}
+
+    # Instantiate lists of bed coordinates to fill
     matched_bed = []
     unmatched_bed = []
 
-    # Iterate over alignments matching i5 and i7
+    # Iterate over each read and it's alignments
     for read, alignments in matches.items():
 
         # Determine which alignment is i5 and which is i7
@@ -262,10 +261,8 @@ def cluster_matches(
             log.debug(f" {read} has no valid illumina fragment")
             continue
         
-        # Instantiate list of distances
-        index_distances = []
-
-        # Iterate over sample sheet entries
+        entries_index_dists = []
+        # Iterate over sample sheet entries and collect the distances between their index and the read's index
         for entry in entries:
 
             # Parse i5 index read
@@ -276,15 +273,15 @@ def cluster_matches(
                 else:
                     i5_seq = entry.adaptor.i5.index_seq
 
-                read_i5_index, d1 = parse_cs(
+                i5_index_read, i5_index_dist = parse_cs(
                     i5_aln.cs,
                     i5_seq,
                     entry.adaptor.i5.len_umi_before_index,
                     entry.adaptor.i5.len_umi_after_index,
                 )
             else:
-                read_i5_index = ""
-                d1 = 0
+                i5_index_read = ""
+                i5_index_dist = 0
 
             # Parse i7 index read
             if entry.adaptor.i7.index_seq is not None:
@@ -293,45 +290,52 @@ def cluster_matches(
                 else:
                     i7_seq = entry.adaptor.i7.index_seq
 
-                read_i7_index, d2 = parse_cs(
+                i7_index_read, i7_index_dist = parse_cs(
                     i7_aln.cs,
                     i7_seq,
                     entry.adaptor.i7.len_umi_before_index,
                     entry.adaptor.i7.len_umi_after_index,
                 )
             else:
-                read_i7_index = ""
-                d2 = 0
+                i7_index_read = ""
+                i7_index_dist = 0
 
-            index_distances.append(d1 + d2)
+            entries_index_dists.append(i5_index_dist + i7_index_dist)
 
-        min_distance_idx = min(range(len(index_distances)), key=index_distances.__getitem__)
-        
-        # Test if two samples in the sheet is equidistant to the i5/i7
-        if len([i for i, j in enumerate(index_distances) if j == index_distances[min_distance_idx]]) > 1:
+        # Find the list idx of the minimum distance between the read's index and the indices of the samples in the sheet
+        entries_min_distance_idx = min(range(len(entries_index_dists)), key=entries_index_dists.__getitem__)
+
+        # If two samples in the sheet are equidistant from the read, skip the read
+        if len([i for i, j in enumerate(entries_index_dists) if j == entries_index_dists[entries_min_distance_idx]]) > 1:
             continue
-        
 
+        # Get the coordinates of the read insert
         start_insert = min(i5_aln.read_end, i7_aln.read_end)
         end_insert = max(i7_aln.read_start, i5_aln.read_start)
+
+        # If the read insert length is too short, skip the read
         if end_insert - start_insert < 10:
             continue
 
-        if index_distances[min_distance_idx] > max_distance:
-            # Find only full length i7(+i5) adaptor combos. Basically a list of "known unknowns"
-            if len(read_i7_index) + len(read_i5_index) == len(entry.adaptor.i7.index_seq or "") + len(
+        # If the read is too far from the closest sample in the sheet
+        if entries_index_dists[entries_min_distance_idx] > max_distance:
+            # If the read has sensible lengths, add it to the unmatched beds
+            if len(i7_index_read) + len(i5_index_read) == len(entry.adaptor.i7.index_seq or "") + len(
                 entry.adaptor.i5.index_seq or ""
             ):
-                fi75 = "+".join([i for i in [read_i7_index, read_i5_index] if not i == ""])
+                fi75 = "+".join([i for i in [i7_index_read, i5_index_read] if not i == ""])
                 unmatched_bed.append([read, start_insert, end_insert, fi75, "999", "."])
-            continue
+            # Otherwise, skip the read
+            else:
+                continue
+        else:
+            # Add the read to the matched beds
+            import ipdb; ipdb.set_trace()
+            matched_bed.append(
+                [read, start_insert, end_insert, entries_index_dists[entries_min_distance_idx][0], "999", "."]
+            )
 
-        matched[read] = alignments
-        matched_bed.append(
-            [read, start_insert, end_insert, index_distances[min_distance_idx][0], "999", "."]
-        )
-
-    log.debug(f" Matched {len(matched)} reads, unmatched {len(unmatched_bed)} reads")
+    log.debug(f" Matched {len(matched_bed)} reads, unmatched {len(unmatched_bed)} reads")
     
     return unmatched_bed, matched_bed
 
