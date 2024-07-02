@@ -218,7 +218,7 @@ def categorize_matches(
 
 def cluster_matches(
     rows: list[SampleSheetEntry],
-    matches: dict,
+    matches: dict[str, list[Alignment]],
     max_distance: int,
     i7_reversed: bool = False,
     i5_reversed: bool = False,
