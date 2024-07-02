@@ -7,11 +7,11 @@ import os
 import sys
 import uuid
 from collections import Counter
+from importlib.metadata import version as get_version
 from itertools import groupby
 
 import Levenshtein as lev
 import numpy as np
-from setuptools import pkg_resources
 
 from .demux.demux import (
     Alignment,
@@ -46,7 +46,7 @@ anglerfish_logo = r"""
 def run_demux(args):
     # Boilerplate
     multiprocessing.set_start_method("spawn")
-    version = pkg_resources.get_distribution("bio-anglerfish").version
+    version = get_version("bio-anglerfish")
     run_uuid = str(uuid.uuid4())
 
     # Parse arguments
