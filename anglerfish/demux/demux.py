@@ -217,17 +217,35 @@ def categorize_matches(
 
 
 def cluster_matches(
-    rows: list[SampleSheetEntry],
+    entries: list[SampleSheetEntry],
     matches: dict[str, list[Alignment]],
     max_distance: int,
     i7_reversed: bool = False,
     i5_reversed: bool = False,
 ) -> tuple[list, list]:
-    # Only illumina fragments
+    """Inputs:
+    - matches: dict of reads to their respective alignments
+    - entries: samplesheet entries for a given adaptor-barcode combination
+    - max_distance: maximum allowed Levenshtein distance between index read and index sequence
+    - i7_reversed: boolean indicating whether the i7 index is reversed
+    - i5_reversed: boolean indicating whether the i5 index is reversed
+
+    Outputs:
+    (
+        unmatched_bed: list of bed coordinates for unmatched reads
+        matched_bed: list of bed coordinates for matched reads
+    )
+    """
+    
+    # Instantiate objects to fill
     matched = {}
     matched_bed = []
     unmatched_bed = []
+
+    # Iterate over alignments matching i5 and i7
     for read, alignments in matches.items():
+
+        # Determine which alignment is i5 and which is i7
         if (
             alignments[0].adapter_name[-2:] == "i5"
             and alignments[1].adapter_name[-2:] == "i7"
@@ -243,61 +261,78 @@ def cluster_matches(
         else:
             log.debug(f" {read} has no valid illumina fragment")
             continue
+        
+        # Instantiate list of distances
+        index_distances = []
 
-        dists = []
-        fi5 = ""
-        fi7 = ""
-        for row in rows:
+        # Iterate over sample sheet entries
+        for entry in entries:
 
-            if row.adaptor.i5.index_seq is not None:
-                i5_seq = row.adaptor.i5.index_seq
-                if i5_reversed and i5_seq is not None:
-                    i5_seq = str(Seq(i5_seq).reverse_complement())
-                fi5, d1 = parse_cs(
+            # Parse i5 index read
+            if entry.adaptor.i5.index_seq is not None:
+
+                if i5_reversed:
+                    i5_seq = str(Seq(entry.adaptor.i5.index_seq).reverse_complement())
+                else:
+                    i5_seq = entry.adaptor.i5.index_seq
+
+                read_i5_index, d1 = parse_cs(
                     i5_aln.cs,
                     i5_seq,
-                    row.adaptor.i5.len_umi_before_index,
-                    row.adaptor.i5.len_umi_after_index,
+                    entry.adaptor.i5.len_umi_before_index,
+                    entry.adaptor.i5.len_umi_after_index,
                 )
             else:
+                read_i5_index = ""
                 d1 = 0
 
-            if row.adaptor.i7.index_seq is not None:
-                i7_seq = row.adaptor.i7.index_seq
-                if i7_reversed and i7_seq is not None:
-                    i7_seq = str(Seq(i7_seq).reverse_complement())
-                fi7, d2 = parse_cs(
+            # Parse i7 index read
+            if entry.adaptor.i7.index_seq is not None:
+                if i7_reversed:
+                    i7_seq = str(Seq(entry.adaptor.i7.index_seq).reverse_complement())
+                else:
+                    i7_seq = entry.adaptor.i7.index_seq
+
+                read_i7_index, d2 = parse_cs(
                     i7_aln.cs,
                     i7_seq,
-                    row.adaptor.i7.len_umi_before_index,
-                    row.adaptor.i7.len_umi_after_index,
+                    entry.adaptor.i7.len_umi_before_index,
+                    entry.adaptor.i7.len_umi_after_index,
                 )
             else:
+                read_i7_index = ""
                 d2 = 0
 
-            dists.append(d1 + d2)
+            index_distances.append(d1 + d2)
 
-        index_min = min(range(len(dists)), key=dists.__getitem__)
+        min_distance_idx = min(range(len(index_distances)), key=index_distances.__getitem__)
+        
         # Test if two samples in the sheet is equidistant to the i5/i7
-        if len([i for i, j in enumerate(dists) if j == dists[index_min]]) > 1:
+        if len([i for i, j in enumerate(index_distances) if j == index_distances[min_distance_idx]]) > 1:
             continue
+        
+
         start_insert = min(i5_aln.read_end, i7_aln.read_end)
         end_insert = max(i7_aln.read_start, i5_aln.read_start)
         if end_insert - start_insert < 10:
             continue
-        if dists[index_min] > max_distance:
+
+        if index_distances[min_distance_idx] > max_distance:
             # Find only full length i7(+i5) adaptor combos. Basically a list of "known unknowns"
-            if len(fi7) + len(fi5) == len(row.adaptor.i7.index_seq or "") + len(
-                row.adaptor.i5.index_seq or ""
+            if len(read_i7_index) + len(read_i5_index) == len(entry.adaptor.i7.index_seq or "") + len(
+                entry.adaptor.i5.index_seq or ""
             ):
-                fi75 = "+".join([i for i in [fi7, fi5] if not i == ""])
+                fi75 = "+".join([i for i in [read_i7_index, read_i5_index] if not i == ""])
                 unmatched_bed.append([read, start_insert, end_insert, fi75, "999", "."])
             continue
+
         matched[read] = alignments
         matched_bed.append(
-            [read, start_insert, end_insert, dists[index_min][0], "999", "."]
+            [read, start_insert, end_insert, index_distances[min_distance_idx][0], "999", "."]
         )
+
     log.debug(f" Matched {len(matched)} reads, unmatched {len(unmatched_bed)} reads")
+    
     return unmatched_bed, matched_bed
 
 
