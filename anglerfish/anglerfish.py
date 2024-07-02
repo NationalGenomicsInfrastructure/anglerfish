@@ -13,7 +13,6 @@ import Levenshtein as lev
 import numpy as np
 import pkg_resources
 
-from .demux.adaptor import Adaptor
 from .demux.demux import (
     Alignment,
     categorize_matches,
@@ -101,20 +100,19 @@ def run_demux(args):
     # Iterate across samplesheet rows conforming to the adaptor-barcode combinations
     out_fastqs = []
     for adaptor_name, ont_barcode in adaptor_barcode_sets:
-
         subset_rows = ss.subset_rows(adaptor_name=adaptor_name, ont_barcode=ont_barcode)
 
         # Grab the fastq files for the current entries
         assert all([subset_rows[0].fastq == row.fastq for row in subset_rows])
         fastq_path = subset_rows[0].fastq
-        fastq_files = glob.glob(fastq_path) 
+        fastq_files = glob.glob(fastq_path)
 
         # If there are multiple ONT barcodes, we need to add the ONT barcode to the adaptor name
         if ont_barcode:
             adaptor_bc_name = f"{adaptor_name}_{ont_barcode}"
         else:
             adaptor_bc_name = adaptor_name
-            
+
         # Align
         alignment_path: str = os.path.join(args.out_fastq, f"{adaptor_bc_name}.paf")
         adaptor_fasta_path: str = os.path.join(args.out_fastq, f"{adaptor_name}.fasta")
@@ -144,8 +142,6 @@ def run_demux(args):
         report.add_alignment_stat(stats)
 
         # Demux
-        no_matches = []
-        matches = []
         flipped_i7 = False
         flipped_i5 = False
         flips = {
@@ -158,7 +154,7 @@ def run_demux(args):
             log.info(
                 f" Force reverse complementing {args.force_rc} index for adaptor {adaptor_name}. Lenient mode is disabled"
             )
-            no_matches, matches = cluster_matches(
+            unmatched_bed, matched_bed = cluster_matches(
                 subset_rows,
                 fragments,
                 args.max_distance,
@@ -197,7 +193,7 @@ def run_demux(args):
                 log.warning(
                     " Lenient mode: Could not find any barcode reverse complements with unambiguously more matches. Using original index orientation for all adaptors. Please study the results carefully!"
                 )
-                no_matches, matches = flipped["original"]
+                unmatched_bed, matched_bed = flipped["original"]
             elif (
                 best_flip != "None"
                 and len(flipped[best_flip][1])
@@ -206,20 +202,22 @@ def run_demux(args):
                 log.info(
                     f" Lenient mode: Reverse complementing {best_flip} index for adaptor {adaptor_name} found at least {args.lenient_factor} times more matches"
                 )
-                no_matches, matches = flipped[best_flip]
+                unmatched_bed, matched_bed = flipped[best_flip]
                 flipped_i7, flipped_i5 = flips[best_flip].values()
             else:
                 log.info(
                     f" Lenient mode: using original index orientation for {adaptor_name}"
                 )
-                no_matches, matches = flipped["original"]
+                unmatched_bed, matched_bed = flipped["original"]
         else:
-            no_matches, matches = cluster_matches(
+            unmatched_bed, matched_bed = cluster_matches(
                 subset_rows, fragments, args.max_distance
             )
 
         out_pool = []
-        for k, v in groupby(sorted(matches, key=lambda x: x[3]), key=lambda y: y[3]):
+        for k, v in groupby(
+            sorted(matched_bed, key=lambda x: x[3]), key=lambda y: y[3]
+        ):
             # To avoid collisions in fastq filenames, we add the ONT barcode to the sample name
             fq_prefix = k
             if ont_barcode:
@@ -264,7 +262,7 @@ def run_demux(args):
             )
 
         # Top unmatched indexes
-        nomatch_count = Counter([x[3] for x in no_matches])
+        nomatch_count = Counter([x[3] for x in unmatched_bed])
         if args.max_unknowns == 0:
             args.max_unknowns = len([sample for sample in ss]) + 10
 

@@ -1,6 +1,5 @@
 import csv
 import glob
-import os
 import re
 from dataclasses import dataclass
 from itertools import combinations
@@ -162,19 +161,21 @@ class SampleSheet:
 
     def get_adaptor_barcode_sets(
         self,
-    ) -> list[tuple[str, str]]:
+    ) -> list[tuple[str, str | None]]:
         """Return a set of unique adaptor-barcode pairings in the samplesheet."""
 
         # Get a set corresponding to the unique pairings of adaptors and ONT barcodes in the samplesheet
-        adaptor_barcode_sets: list[tuple[str, str]] = list(
+        adaptor_barcode_sets: list[tuple[str, str | None]] = list(
             set([(row.adaptor.name, row.ont_barcode) for row in self.rows])
         )
 
         return adaptor_barcode_sets
 
-    def subset_rows(self, adaptor_name: str, ont_barcode: str|None) -> list[SampleSheetEntry]:
+    def subset_rows(
+        self, adaptor_name: str, ont_barcode: str | None
+    ) -> list[SampleSheetEntry]:
         """Return a subset of samplesheet rows based on logical criteria."""
-        
+
         subset_rows = []
 
         for row in self.rows:
@@ -184,7 +185,6 @@ class SampleSheet:
                 continue
 
         return subset_rows
-
 
     def __iter__(self):
         return iter(self.rows)

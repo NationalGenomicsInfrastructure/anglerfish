@@ -223,7 +223,9 @@ def cluster_matches(
     i7_reversed: bool = False,
     i5_reversed: bool = False,
 ) -> tuple[list, list]:
-    """Inputs:
+    """Return the BED coordinates of unmatching and matching reads.
+
+    Inputs:
     - matches: dict of reads to their respective alignments
     - entries: samplesheet entries for a given adaptor-barcode combination
     - max_distance: maximum allowed Levenshtein distance between index read and index sequence
@@ -243,7 +245,6 @@ def cluster_matches(
 
     # Iterate over each read and it's alignments
     for read, alignments in matches.items():
-
         # Determine which alignment is i5 and which is i7
         if (
             alignments[0].adapter_name[-2:] == "i5"
@@ -260,14 +261,12 @@ def cluster_matches(
         else:
             log.debug(f" {read} has no valid illumina fragment")
             continue
-        
+
         entries_index_dists = []
         # Iterate over sample sheet entries and collect the distances between their index and the read's index
         for entry in entries:
-
             # Parse i5 index read
             if entry.adaptor.i5.index_seq is not None:
-
                 if i5_reversed:
                     i5_seq = str(Seq(entry.adaptor.i5.index_seq).reverse_complement())
                 else:
@@ -303,10 +302,22 @@ def cluster_matches(
             entries_index_dists.append(i5_index_dist + i7_index_dist)
 
         # Find the list idx of the minimum distance between the read's index and the indices of the samples in the sheet
-        entries_min_distance_idx = min(range(len(entries_index_dists)), key=entries_index_dists.__getitem__)
+        entries_min_index_dist_loc = min(
+            range(len(entries_index_dists)), key=entries_index_dists.__getitem__
+        )
+        entry_min_index_dist = entries[entries_min_index_dist_loc]
 
         # If two samples in the sheet are equidistant from the read, skip the read
-        if len([i for i, j in enumerate(entries_index_dists) if j == entries_index_dists[entries_min_distance_idx]]) > 1:
+        if (
+            len(
+                [
+                    i
+                    for i, j in enumerate(entries_index_dists)
+                    if j == entries_index_dists[entries_min_index_dist_loc]
+                ]
+            )
+            > 1
+        ):
             continue
 
         # Get the coordinates of the read insert
@@ -318,25 +329,35 @@ def cluster_matches(
             continue
 
         # If the read is too far from the closest sample in the sheet
-        if entries_index_dists[entries_min_distance_idx] > max_distance:
+        if entries_index_dists[entries_min_index_dist_loc] > max_distance:
             # If the read has sensible lengths, add it to the unmatched beds
-            if len(i7_index_read) + len(i5_index_read) == len(entry.adaptor.i7.index_seq or "") + len(
-                entry.adaptor.i5.index_seq or ""
-            ):
-                fi75 = "+".join([i for i in [i7_index_read, i5_index_read] if not i == ""])
+            if len(i7_index_read) + len(i5_index_read) == len(
+                entry.adaptor.i7.index_seq or ""
+            ) + len(entry.adaptor.i5.index_seq or ""):
+                fi75 = "+".join(
+                    [i for i in [i7_index_read, i5_index_read] if not i == ""]
+                )
                 unmatched_bed.append([read, start_insert, end_insert, fi75, "999", "."])
             # Otherwise, skip the read
             else:
                 continue
         else:
             # Add the read to the matched beds
-            import ipdb; ipdb.set_trace()
             matched_bed.append(
-                [read, start_insert, end_insert, entries_index_dists[entries_min_distance_idx][0], "999", "."]
+                [
+                    read,
+                    start_insert,
+                    end_insert,
+                    entry_min_index_dist.sample_name,
+                    "999",
+                    ".",
+                ]
             )
 
-    log.debug(f" Matched {len(matched_bed)} reads, unmatched {len(unmatched_bed)} reads")
-    
+    log.debug(
+        f" Matched {len(matched_bed)} reads, unmatched {len(unmatched_bed)} reads"
+    )
+
     return unmatched_bed, matched_bed
 
 
