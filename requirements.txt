@@ -1,7 +1,10 @@
+bio
 biopython==1.83
-levenshtein==0.23.0
 numpy==1.26.3
 pandas==2.1.4
 pytest==8.2.1
+python_levenshtein=0.23.0
 pyyaml==6.0.1
+setuptools
 typer==0.9.0
+typing_extensions
