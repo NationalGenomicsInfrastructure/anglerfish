@@ -4,8 +4,8 @@ import os
 from enum import Enum
 from typing import Optional
 
-import pkg_resources
 import typer
+from setuptools import pkg_resources
 from typing_extensions import Annotated
 
 from .anglerfish import run_demux

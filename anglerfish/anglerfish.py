@@ -11,7 +11,7 @@ from itertools import groupby
 
 import Levenshtein as lev
 import numpy as np
-import pkg_resources
+from setuptools import pkg_resources
 
 from .demux.demux import (
     Alignment,
