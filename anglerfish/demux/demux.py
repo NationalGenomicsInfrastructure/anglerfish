@@ -308,7 +308,7 @@ def cluster_matches(
         entry_min_index_dist = entries[entries_min_index_dist_loc]
 
         # If several samples in the sheet are equidistant from the read, skip the read
-        if entries_index_dists.count(entry_min_index_dist) > 1:
+        if entries_index_dists.count(min(entries_index_dists)) > 1:
             continue
 
         # Get the coordinates of the read insert
