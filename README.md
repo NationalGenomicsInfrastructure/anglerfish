@@ -188,11 +188,12 @@ Also, the [Anglerfish logo](docs/Anglerfish_logo.svg) was designed by [@FranBona
   <img src="docs/Anglerfish_logo.svg">
 </p>
 
-### GitHub contributors
+### Contributors
 
 - [@remiolsen](https://github.com/remiolsen)
 - [@FranBonath](https://github.com/FranBonath)
 - [@taborsak](https://github.com/taborsak)
 - [@ssjunnebo](https://github.com/ssjunnebo)
+- Carl Rubin
 - [@alneberg](https://github.com/alneberg)
 - [@kedhammar](https://github.com/kedhammar)
