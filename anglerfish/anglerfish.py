@@ -7,17 +7,17 @@ import os
 import sys
 import uuid
 from collections import Counter
+from importlib.metadata import version as get_version
 from itertools import groupby
 
 import Levenshtein as lev
 import numpy as np
-import pkg_resources
 
-from .demux.adaptor import Adaptor
 from .demux.demux import (
+    Alignment,
+    categorize_matches,
     cluster_matches,
-    layout_matches,
-    parse_paf_lines,
+    map_reads_to_alns,
     run_minimap2,
     write_demuxedfastq,
 )
@@ -44,19 +44,42 @@ anglerfish_logo = r"""
 
 
 def run_demux(args):
+    # Boilerplate
     multiprocessing.set_start_method("spawn")
+    version = get_version("bio-anglerfish")
+    run_uuid = str(uuid.uuid4())
 
+    # Parse arguments
     if args.debug:
         log.setLevel(logging.DEBUG)
-    run_uuid = str(uuid.uuid4())
-    ss = SampleSheet(args.samplesheet, args.ont_barcodes)
-    version = pkg_resources.get_distribution("bio-anglerfish").version
-    report = Report(args.run_name, run_uuid, version)
+
+    if args.threads > MAX_PROCESSES:
+        log.warning(
+            f" Setting threads to {MAX_PROCESSES} as the maximum number of processes is {MAX_PROCESSES}"
+        )
+        args.threads = MAX_PROCESSES
+
+    if os.path.exists(args.out_fastq):
+        raise FileExistsError(
+            f"Output folder '{args.out_fastq}' already exists. Please remove it or specify another --run_name"
+        )
+    else:
+        os.mkdir(args.out_fastq)
+
+    # Print logo and info
     sys.stderr.write(anglerfish_logo)
     log.info(f" version {version}")
     log.info(f" arguments {vars(args)}")
     log.info(f" run uuid {run_uuid}")
+
+    # Instantiate samplesheet and report
+    ss = SampleSheet(args.samplesheet, args.ont_barcodes)
+    report = Report(args.run_name, run_uuid, version)
+
+    # Calculate the minimum edit distance between indices in the samplesheet
     min_distance = ss.minimum_bc_distance()
+
+    # Determine which edit distance to use for index matching
     if args.max_distance is None:
         # Default: Set the maximum distance for barcode matching to 0, 1 or 2
         # depending on the smallest detected edit distance between indices in the samplesheet
@@ -70,88 +93,55 @@ def run_demux(args):
         )
         exit()
     log.debug(f"Samplesheet bc_dist == {min_distance}")
-    if args.threads > MAX_PROCESSES:
-        log.warning(
-            f" Setting threads to {MAX_PROCESSES} as the maximum number of processes is {MAX_PROCESSES}"
-        )
-        args.threads = MAX_PROCESSES
 
-    ## Sort the adaptors by type and size
+    # Get adaptor-barcode combinations from samplesheet
+    adaptor_barcode_sets = ss.get_adaptor_barcode_sets()
 
-    # Get a list of tuples with the adaptor name and ONT barcode
-    adaptor_tuples: list[tuple[str, str]] = [
-        (entry.adaptor.name, entry.ont_barcode) for entry in ss
-    ]
-
-    # Convert to set to enforce uniqueness
-    adaptor_set: set[tuple[str, str]] = set(adaptor_tuples)
-
-    # Create a dictionary with the adaptors as keys and an empty list as value
-    adaptors_sorted: dict[tuple[str, str], list[tuple[str, Adaptor, str]]] = dict(
-        [(i, []) for i in adaptor_set]
-    )
-
-    # Populate the dictionary values with sample-specific information
-    """
-        adaptors_sorted = {
-             adaptor_name_str, ont_barcode_str ) : [
-                (sample_name_str, Adaptor, fastq_str),
-                (sample_name_str, Adaptor, fastq_str),
-                ...
-            ],
-            ...
-        } 
-    """
-    for entry in ss:
-        adaptors_sorted[(entry.adaptor.name, entry.ont_barcode)].append(
-            (entry.sample_name, entry.adaptor, os.path.abspath(entry.fastq))
-        )
-    if os.path.exists(args.out_fastq):
-        raise FileExistsError(
-            f"Output folder '{args.out_fastq}' already exists. Please remove it or specify another --run_name"
-        )
-    else:
-        os.mkdir(args.out_fastq)
+    # Iterate across samplesheet rows conforming to the adaptor-barcode combinations
     out_fastqs = []
-    for key, sample in adaptors_sorted.items():
-        adaptor_name, ont_barcode = key
-        fastq_path = sample[0][2]
+    for adaptor_name, ont_barcode in adaptor_barcode_sets:
+        subset_rows = ss.subset_rows(adaptor_name=adaptor_name, ont_barcode=ont_barcode)
+
+        # Grab the fastq files for the current entries
+        assert all([subset_rows[0].fastq == row.fastq for row in subset_rows])
+        fastq_path = subset_rows[0].fastq
+        fastq_files = glob.glob(fastq_path)
+
         # If there are multiple ONT barcodes, we need to add the ONT barcode to the adaptor name
         if ont_barcode:
             adaptor_bc_name = f"{adaptor_name}_{ont_barcode}"
         else:
             adaptor_bc_name = adaptor_name
-        fastq_files = glob.glob(fastq_path)
 
         # Align
-        align_path = os.path.join(args.out_fastq, f"{adaptor_bc_name}.paf")
-        adaptor_path = os.path.join(args.out_fastq, f"{adaptor_name}.fasta")
-        with open(adaptor_path, "w") as f:
+        alignment_path: str = os.path.join(args.out_fastq, f"{adaptor_bc_name}.paf")
+        adaptor_fasta_path: str = os.path.join(args.out_fastq, f"{adaptor_name}.fasta")
+        with open(adaptor_fasta_path, "w") as f:
             f.write(ss.get_fastastring(adaptor_name))
-        for fq in fastq_files:
-            run_minimap2(fq, adaptor_path, align_path, args.threads)
+        for fq_file in fastq_files:
+            run_minimap2(fq_file, adaptor_fasta_path, alignment_path, args.threads)
 
         # Easy line count in input fastq files
-        num_fq = 0
-        for fq in fastq_files:
-            with gzip.open(fq, "rb") as f:
+        num_fq_lines = 0
+        for fq_file in fastq_files:
+            with gzip.open(fq_file, "rb") as f:
                 for i in f:
-                    num_fq += 1
-        num_fq = int(num_fq / 4)
-        paf_entries = parse_paf_lines(align_path)
+                    num_fq_lines += 1
+        num_fq = int(num_fq_lines / 4)
+        reads_to_alns: dict[str, list[Alignment]] = map_reads_to_alns(alignment_path)
 
         # Make stats
         log.info(f" Searching for adaptor hits in {adaptor_bc_name}")
-        fragments, singletons, concats, unknowns = layout_matches(
-            adaptor_name + "_i5", adaptor_name + "_i7", paf_entries
+        fragments, singletons, concats, unknowns = categorize_matches(
+            i5_name=f"{adaptor_name}_i5",
+            i7_name=f"{adaptor_name}_i7",
+            reads_to_alns=reads_to_alns,
         )
         stats = AlignmentStat(adaptor_bc_name)
         stats.compute_pafstats(num_fq, fragments, singletons, concats, unknowns)
         report.add_alignment_stat(stats)
 
         # Demux
-        no_matches = []
-        matches = []
         flipped_i7 = False
         flipped_i5 = False
         flips = {
@@ -164,8 +154,8 @@ def run_demux(args):
             log.info(
                 f" Force reverse complementing {args.force_rc} index for adaptor {adaptor_name}. Lenient mode is disabled"
             )
-            no_matches, matches = cluster_matches(
-                adaptors_sorted[key],
+            unmatched_bed, matched_bed = cluster_matches(
+                subset_rows,
                 fragments,
                 args.max_distance,
                 **flips[args.force_rc],
@@ -182,7 +172,7 @@ def run_demux(args):
                 spawn = pool.apply_async(
                     cluster_matches,
                     args=(
-                        adaptors_sorted[key],
+                        subset_rows,
                         fragments,
                         args.max_distance,
                         rev["i7_reversed"],
@@ -203,7 +193,7 @@ def run_demux(args):
                 log.warning(
                     " Lenient mode: Could not find any barcode reverse complements with unambiguously more matches. Using original index orientation for all adaptors. Please study the results carefully!"
                 )
-                no_matches, matches = flipped["original"]
+                unmatched_bed, matched_bed = flipped["original"]
             elif (
                 best_flip != "None"
                 and len(flipped[best_flip][1])
@@ -212,20 +202,22 @@ def run_demux(args):
                 log.info(
                     f" Lenient mode: Reverse complementing {best_flip} index for adaptor {adaptor_name} found at least {args.lenient_factor} times more matches"
                 )
-                no_matches, matches = flipped[best_flip]
+                unmatched_bed, matched_bed = flipped[best_flip]
                 flipped_i7, flipped_i5 = flips[best_flip].values()
             else:
                 log.info(
                     f" Lenient mode: using original index orientation for {adaptor_name}"
                 )
-                no_matches, matches = flipped["original"]
+                unmatched_bed, matched_bed = flipped["original"]
         else:
-            no_matches, matches = cluster_matches(
-                adaptors_sorted[key], fragments, args.max_distance
+            unmatched_bed, matched_bed = cluster_matches(
+                subset_rows, fragments, args.max_distance
             )
 
         out_pool = []
-        for k, v in groupby(sorted(matches, key=lambda x: x[3]), key=lambda y: y[3]):
+        for k, v in groupby(
+            sorted(matched_bed, key=lambda x: x[3]), key=lambda y: y[3]
+        ):
             # To avoid collisions in fastq filenames, we add the ONT barcode to the sample name
             fq_prefix = k
             if ont_barcode:
@@ -270,7 +262,7 @@ def run_demux(args):
             )
 
         # Top unmatched indexes
-        nomatch_count = Counter([x[3] for x in no_matches])
+        nomatch_count = Counter([x[3] for x in unmatched_bed])
         if args.max_unknowns == 0:
             args.max_unknowns = len([sample for sample in ss]) + 10
 

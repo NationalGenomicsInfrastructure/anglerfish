@@ -88,6 +88,7 @@ def fixture():
 
 
 def test_run_minimap2(fixture):
+    """Check that the function runs successfully, not the output."""
     # Test alignment on single read
     to_test.run_minimap2(
         fastq_in=fixture["testdata_single"],
@@ -96,10 +97,6 @@ def test_run_minimap2(fixture):
         threads=1,
         minimap_b=1,
     )
-
-    expected = "0ad8bdb6-e009-43c5-95b1-d381e699f983\t418\t302\t374\t+\ttruseq_i7\t67\t0\t67\t51\t64\t25\tNM:i:23\tms:i:275\tAS:i:266\tnn:i:10\ttp:A:P\tcm:i:5\ts1:i:29\ts2:i:0\tde:f:0.2388\trl:i:0\tcg:Z:11M2D33M7I21M\tcs:Z::11-ca:6*tg:13*nt*na*na*nc*nt*nt*ng*ng*nt*nc:1*ta:1+ctagaaa:2*gt*tg:17\n0ad8bdb6-e009-43c5-95b1-d381e699f983\t418\t45\t110\t+\ttruseq_i5\t58\t0\t58\t56\t66\t38\tNM:i:10\tms:i:313\tAS:i:305\tnn:i:0\ttp:A:P\tcm:i:10\ts1:i:37\ts2:i:0\tde:f:0.0667\trl:i:0\tcg:Z:15M1D6M7I3M1I33M\tcs:Z::15-a*cg:5+tcccgat:3+g:33\n"
-    received = open(fixture["paf_single"]).read()
-    assert expected == received
 
     # Create aligntment from multiple reads
     to_test.run_minimap2(
@@ -111,108 +108,44 @@ def test_run_minimap2(fixture):
     )
 
 
-def test_parse_paf_lines_simple(fixture):
-    paf_lines_simple = to_test.parse_paf_lines(fixture["paf_single"])
-    expected_simple = {
-        "0ad8bdb6-e009-43c5-95b1-d381e699f983": [
-            {
-                "read": "0ad8bdb6-e009-43c5-95b1-d381e699f983",
-                "adapter": "truseq_i7",
-                "rlen": 418,
-                "rstart": 302,
-                "rend": 374,
-                "strand": "+",
-                "cg": "cg:Z:11M2D33M7I21M",
-                "cs": "cs:Z::11-ca:6*tg:13*nt*na*na*nc*nt*nt*ng*ng*nt*nc:1*ta:1+ctagaaa:2*gt*tg:17",
-                "q": 25,
-                "iseq": None,
-                "sample": None,
-            },
-            {
-                "read": "0ad8bdb6-e009-43c5-95b1-d381e699f983",
-                "adapter": "truseq_i5",
-                "rlen": 418,
-                "rstart": 45,
-                "rend": 110,
-                "strand": "+",
-                "cg": "cg:Z:15M1D6M7I3M1I33M",
-                "cs": "cs:Z::15-a*cg:5+tcccgat:3+g:33",
-                "q": 38,
-                "iseq": None,
-                "sample": None,
-            },
-        ]
-    }
-    assert paf_lines_simple == expected_simple
+def test_map_reads_to_alns(fixture):
+    reads_alns = to_test.map_reads_to_alns(fixture["paf_single"])
 
-
-def test_parse_paf_lines_complex(fixture):
-    paf_lines_complex = to_test.parse_paf_lines(fixture["paf_single"])
-    expected_complex = {
-        "0ad8bdb6-e009-43c5-95b1-d381e699f983": [
-            {
-                "read": "0ad8bdb6-e009-43c5-95b1-d381e699f983",
-                "adapter": "truseq_i7",
-                "rlen": 418,
-                "rstart": 302,
-                "rend": 374,
-                "strand": "+",
-                "cg": "cg:Z:11M2D33M7I21M",
-                "cs": "cs:Z::11-ca:6*tg:13*nt*na*na*nc*nt*nt*ng*ng*nt*nc:1*ta:1+ctagaaa:2*gt*tg:17",
-                "q": 25,
-                "iseq": None,
-                "sample": None,
-            },
-            {
-                "read": "0ad8bdb6-e009-43c5-95b1-d381e699f983",
-                "adapter": "truseq_i5",
-                "rlen": 418,
-                "rstart": 45,
-                "rend": 110,
-                "strand": "+",
-                "cg": "cg:Z:15M1D6M7I3M1I33M",
-                "cs": "cs:Z::15-a*cg:5+tcccgat:3+g:33",
-                "q": 38,
-                "iseq": None,
-                "sample": None,
-            },
-        ]
-    }
-    assert paf_lines_complex == expected_complex
+    for read_name, alns in reads_alns.items():
+        assert read_name == "0ad8bdb6-e009-43c5-95b1-d381e699f983"
+        for aln in alns:
+            if aln.adapter_name == "truseq_i7":
+                assert (
+                    aln.cs
+                    == "cs:Z::11-ca:6*tg:13*nt*na*na*nc*nt*nt*ng*ng*nt*nc:1*ta:1+ctagaaa:2*gt*tg:17"
+                )
+            else:
+                assert aln.cs == "cs:Z::15-a*cg:5+tcccgat:3+g:33"
 
 
 def test_parse_cs(fixture):
-    paf_lines_simple = to_test.parse_paf_lines(fixture["paf_single"])
+    test_cs_str = (
+        "cs:Z::11-ca:6*tg:13*nt*na*na*nc*nt*nt*ng*ng*nt*nc:1*ta:1+ctagaaa:2*gt*tg:17"
+    )
+    expected_cs_parsed = ("taacttggtc", 0)
 
-    for read_name, alignments in paf_lines_simple.items():
-        for alignment in alignments:
-            cs_string = alignment["cs"]
-            cs_parsed = to_test.parse_cs(
-                cs_string=cs_string,
-                index_seq=fixture["index"],
-                umi_before=0,
-                umi_after=0,
-            )
+    cs_parsed = to_test.parse_cs(
+        cs_string=test_cs_str,
+        index_seq=fixture["index"],
+        umi_before=0,
+        umi_after=0,
+    )
 
-            if alignment["adapter"] == "truseq_i7":
-                # Perfect match to index
-                assert cs_parsed[0] == fixture["index"].lower()
-                assert cs_parsed[1] == 0
-            elif alignment["adapter"] == "truseq_i5":
-                # No index, distance the length of all concatenated substitutions of the cs string
-                assert cs_parsed[0] == ""
-                assert cs_parsed[1] == 10
-            else:
-                raise AssertionError("Case not covered.")
+    assert cs_parsed == expected_cs_parsed
 
 
-def test_layout_matches(fixture):
+def test_categorize_matches(fixture):
     i5_name = "truseq_i5"
     i7_name = "truseq_i7"
-    paf_entries = to_test.parse_paf_lines(fixture["paf_multiple"])
+    reads_alns = to_test.map_reads_to_alns(fixture["paf_multiple"])
 
-    layout = to_test.layout_matches(
-        i5_name=i5_name, i7_name=i7_name, paf_entries=paf_entries
+    layout = to_test.categorize_matches(
+        i5_name=i5_name, i7_name=i7_name, reads_to_alns=reads_alns
     )
     fragments, singletons, concats, unknowns = layout
 

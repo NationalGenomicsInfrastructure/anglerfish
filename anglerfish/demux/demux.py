@@ -10,7 +10,7 @@ import Levenshtein as lev
 from Bio.Seq import Seq
 from Bio.SeqIO.QualityIO import FastqGeneralIterator
 
-from anglerfish.demux.adaptor import Adaptor
+from anglerfish.demux.samplesheet import SampleSheetEntry
 
 log = logging.getLogger("anglerfish")
 
@@ -40,8 +40,9 @@ def parse_cs(
     else:
         bases_spanning_index_mask = bases_spanning_mask
     # Return the index and the Levenshtein distance between it and the presumed index region of the read
-    return bases_spanning_index_mask, lev.distance(
-        index_seq.lower(), bases_spanning_index_mask
+    return (
+        bases_spanning_index_mask,
+        lev.distance(index_seq.lower(), bases_spanning_index_mask),
     )
 
 
@@ -75,83 +76,103 @@ def run_minimap2(
         subprocess.run("sort", stdin=p1.stdout, stdout=ofile, check=True)
 
 
-def parse_paf_lines(
-    paf_path: str, min_qual: int = 1, complex_identifier: bool = False
-) -> dict[str, list[dict]]:
+class Alignment:
     """
-    Read and parse one paf alignment lines.
-    Returns a dict with the import values for later use.
+    Class instantiated from one paf alignment entry.
 
-    If complex_identifier is True (default False), the keys will be on the form
-    "{read}_{i5_or_i7}_{strand_str}".
+    Retains the important values for later use.
     """
-    entries: dict = {}
+
+    def __init__(self, paf_line: str):
+        paf_cols = paf_line.split()
+
+        # Unpack cols to vars for type annotation
+        self.read_name: str = paf_cols[0]
+        self.read_len: int = int(paf_cols[1])  # read length
+        self.read_start: int = int(paf_cols[2])  # start alignment on read
+        self.read_end: int = int(paf_cols[3])  # end alignment on read
+        self.read_strand: str = paf_cols[4]
+        self.adapter_name: str = paf_cols[5]
+
+        self.q: int = int(paf_cols[11])  # Q score
+
+        self.cg: str = paf_cols[-2]  # cigar string
+        self.cs: str = paf_cols[-1]  # cigar diff string
+
+
+def map_reads_to_alns(
+    paf_path: str, min_qual: int = 1, complex_identifier: bool = False
+) -> dict[str, list[Alignment]]:
+    """
+    Parse a .paf file into a dict, mapping reads to their respective alignment objects.
+
+    Outputs:
+
+        reads_to_alns = {
+            "read1": [
+                aln_read1_adaptor1_i5,
+                aln_read1_adaptor1_i7,
+                aln_read1_adaptor2_i5,
+                ...
+            ],
+            "read2": [
+                aln_read1_adaptor1_i5,
+                aln_read1_adaptor1_i7,
+                aln_read1_adaptor2_i5,
+                ...
+            ],
+            ...
+        }
+
+    complex_identifier = False (default)
+        --> The keys will be on the form "{read_name}".
+
+    complex_identifier = True
+        --> The keys will be on the form "{read_name}_{i5_or_i7}_{strand_str}".
+    """
+    reads_to_alns: dict = {}
     with open(paf_path) as paf:
         for paf_line in paf:
-            paf_cols = paf_line.split()
             try:
-                # TODO: objectify this
-
-                # Unpack cols to vars for type annotation
-                read: str = paf_cols[0]
-                adapter: str = paf_cols[5]
-                rlen: int = int(paf_cols[1])  # read length
-                rstart: int = int(paf_cols[2])  # start alignment on read
-                rend: int = int(paf_cols[3])  # end alignment on read
-                strand: str = paf_cols[4]
-                cg: str = paf_cols[-2]  # cigar string
-                cs: str = paf_cols[-1]  # cigar diff string
-                q: int = int(paf_cols[11])  # Q score
-                iseq: str | None = None
-                sample: str | None = None
+                # Parse paf line into Alignment object
+                aln = Alignment(paf_line)
 
                 # Determine identifier
-                if complex_identifier:
-                    i5_or_i7 = adapter.split("_")[-1]
-                    if strand == "+":
-                        strand_str = "positive"
-                    else:
-                        strand_str = "negative"
-                    key = f"{read}_{i5_or_i7}_{strand_str}"
-                else:
-                    key = read
+                i5_or_i7 = aln.adapter_name.split("_")[-1]
+                strand_str = "positive" if aln.read_strand == "+" else "negative"
+                key = (
+                    f"{aln.read_name}_{i5_or_i7}_{strand_str}"
+                    if complex_identifier
+                    else aln.read_name
+                )
 
             except IndexError:
-                log.debug(f"Could not find all paf columns: {read}")
+                log.debug(f"Could not find all paf columns: {aln.read_name}")
                 continue
 
-            if q < min_qual:
-                log.debug(f"Low quality alignment: {read}")
+            if aln.q < min_qual:
+                log.debug(f"Low quality alignment: {aln.read_name}")
                 continue
 
-            # Compile entry
-            entry = {
-                "read": read,
-                "adapter": adapter,
-                "rlen": rlen,
-                "rstart": rstart,
-                "rend": rend,
-                "strand": strand,
-                "cg": cg,
-                "cs": cs,
-                "q": q,
-                "iseq": iseq,
-                "sample": sample,
-            }
-
-            if key in entries.keys():
-                entries[key].append(entry)
+            if key in reads_to_alns.keys():
+                reads_to_alns[key].append(aln)
             else:
-                entries[key] = [entry]
+                reads_to_alns[key] = [aln]
 
-    return entries
+    return reads_to_alns
 
 
-def layout_matches(
-    i5_name: str, i7_name: str, paf_entries: dict[str, list[dict]]
-) -> tuple[dict, dict, dict, dict]:
+def categorize_matches(
+    i5_name: str, i7_name: str, reads_to_alns: dict[str, list[Alignment]]
+) -> tuple[
+    dict[str, list[Alignment]],
+    dict[str, list[Alignment]],
+    dict[str, list[Alignment]],
+    dict[str, list[Alignment]],
+]:
     """
-    Search the parsed paf alignments and layout possible Illumina library fragments
+    Search the parsed paf alignments and layout possible Illumina library fragments,
+
     Returns dicts:
         - fragments. Reads with one I7 and one I5
         - singletons. Reads with that only match either I5 or I7 adaptors
@@ -163,119 +184,171 @@ def layout_matches(
     singletons = {}
     concats = {}
     unknowns = {}
-    for read, entry_list in paf_entries.items():
-        sorted_entries = []
-        for k in range(len(entry_list) - 1):
-            entry_i = entry_list[k]
-            entry_j = entry_list[k + 1]
+    for read, alns in reads_to_alns.items():
+        sorted_alns = []
+        for i in range(len(alns) - 1):
+            aln_i: Alignment = alns[i]
+            aln_j: Alignment = alns[i + 1]
             if (
-                entry_i["adapter"] != entry_j["adapter"]
-                and (entry_i["adapter"] == i5_name and entry_j["adapter"] == i7_name)
-                or (entry_j["adapter"] == i5_name and entry_i["adapter"] == i7_name)
+                aln_i.adapter_name != aln_j.adapter_name
+                and (aln_i.adapter_name == i5_name and aln_j.adapter_name == i7_name)
+                or (aln_j.adapter_name == i5_name and aln_i.adapter_name == i7_name)
             ):
-                if entry_i in sorted_entries:
-                    sorted_entries.append(entry_j)
+                if aln_i in sorted_alns:
+                    sorted_alns.append(aln_j)
                 else:
-                    sorted_entries.extend([entry_i, entry_j])
-        if len(entry_list) == 1:
-            singletons[read] = entry_list
-        elif len(sorted_entries) == 2:
-            fragments[read] = sorted(sorted_entries, key=lambda l: l["rstart"])
-        elif len(sorted_entries) > 2:
-            concats[read] = sorted(sorted_entries, key=lambda l: l["rstart"])
+                    sorted_alns.extend([aln_i, aln_j])
+        if len(alns) == 1:
+            singletons[read] = alns
+        elif len(sorted_alns) == 2:
+            fragments[read] = sorted(sorted_alns, key=lambda aln: aln.read_start)
+        elif len(sorted_alns) > 2:
+            concats[read] = sorted(sorted_alns, key=lambda aln: aln.read_start)
             log.debug(
-                f"Concatenated fragment: {read}, found: {[(i['adapter'],i['rstart']) for i in sorted_entries]}"
+                f"Concatenated fragment: {read}, found: {[(aln.adapter_name,aln.read_start) for aln in sorted_alns]}"
             )
         else:
-            unknowns[read] = entry_list
+            unknowns[read] = alns
             log.debug(
-                f"Unknown fragment: {read}, found: {[(i['adapter'],i['rstart']) for i in entry_list]}"
+                f"Unknown fragment: {read}, found: {[(aln.adapter_name,aln.read_start) for aln in alns]}"
             )
         # TODO: add minimum insert size
     return (fragments, singletons, concats, unknowns)
 
 
 def cluster_matches(
-    sample_adaptor: list[tuple[str, Adaptor, str]],
-    matches: dict,
+    entries: list[SampleSheetEntry],
+    matches: dict[str, list[Alignment]],
     max_distance: int,
     i7_reversed: bool = False,
     i5_reversed: bool = False,
 ) -> tuple[list, list]:
-    # Only illumina fragments
-    matched = {}
+    """Return the BED coordinates of unmatching and matching reads.
+
+    Inputs:
+    - matches: dict of reads to their respective alignments
+    - entries: samplesheet entries for a given adaptor-barcode combination
+    - max_distance: maximum allowed Levenshtein distance between index read and index sequence
+    - i7_reversed: boolean indicating whether the i7 index is reversed
+    - i5_reversed: boolean indicating whether the i5 index is reversed
+
+    Outputs:
+    (
+        unmatched_bed: list of bed coordinates for unmatched reads
+        matched_bed: list of bed coordinates for matched reads
+    )
+    """
+
+    # Instantiate lists of bed coordinates to fill
     matched_bed = []
     unmatched_bed = []
+
+    # Iterate over each read and it's alignments
     for read, alignments in matches.items():
+        # Determine which alignment is i5 and which is i7
         if (
-            alignments[0]["adapter"][-2:] == "i5"
-            and alignments[1]["adapter"][-2:] == "i7"
+            alignments[0].adapter_name[-2:] == "i5"
+            and alignments[1].adapter_name[-2:] == "i7"
         ):
-            i5 = alignments[0]
-            i7 = alignments[1]
+            i5_aln = alignments[0]
+            i7_aln = alignments[1]
         elif (
-            alignments[1]["adapter"][-2:] == "i5"
-            and alignments[0]["adapter"][-2:] == "i7"
+            alignments[1].adapter_name[-2:] == "i5"
+            and alignments[0].adapter_name[-2:] == "i7"
         ):
-            i5 = alignments[1]
-            i7 = alignments[0]
+            i5_aln = alignments[1]
+            i7_aln = alignments[0]
         else:
-            log.debug(" {read} has no valid illumina fragment")
+            log.debug(f" {read} has no valid illumina fragment")
             continue
 
-        dists = []
-        fi5 = ""
-        fi7 = ""
-        for _, adaptor, _ in sample_adaptor:
-            if adaptor.i5.index_seq is not None:
-                i5_seq = adaptor.i5.index_seq
-                if i5_reversed and i5_seq is not None:
-                    i5_seq = str(Seq(i5_seq).reverse_complement())
-                fi5, d1 = parse_cs(
-                    i5["cs"],
+        entries_index_dists = []
+        # Iterate over sample sheet entries and collect the distances between their index and the read's index
+        for entry in entries:
+            # Parse i5 index read
+            if entry.adaptor.i5.index_seq is not None:
+                if i5_reversed:
+                    i5_seq = str(Seq(entry.adaptor.i5.index_seq).reverse_complement())
+                else:
+                    i5_seq = entry.adaptor.i5.index_seq
+
+                i5_index_read, i5_index_dist = parse_cs(
+                    i5_aln.cs,
                     i5_seq,
-                    adaptor.i5.len_umi_before_index,
-                    adaptor.i5.len_umi_after_index,
+                    entry.adaptor.i5.len_umi_before_index,
+                    entry.adaptor.i5.len_umi_after_index,
                 )
             else:
-                d1 = 0
+                i5_index_read = ""
+                i5_index_dist = 0
 
-            if adaptor.i7.index_seq is not None:
-                i7_seq = adaptor.i7.index_seq
-                if i7_reversed and i7_seq is not None:
-                    i7_seq = str(Seq(i7_seq).reverse_complement())
-                fi7, d2 = parse_cs(
-                    i7["cs"],
+            # Parse i7 index read
+            if entry.adaptor.i7.index_seq is not None:
+                if i7_reversed:
+                    i7_seq = str(Seq(entry.adaptor.i7.index_seq).reverse_complement())
+                else:
+                    i7_seq = entry.adaptor.i7.index_seq
+
+                i7_index_read, i7_index_dist = parse_cs(
+                    i7_aln.cs,
                     i7_seq,
-                    adaptor.i7.len_umi_before_index,
-                    adaptor.i7.len_umi_after_index,
+                    entry.adaptor.i7.len_umi_before_index,
+                    entry.adaptor.i7.len_umi_after_index,
                 )
             else:
-                d2 = 0
+                i7_index_read = ""
+                i7_index_dist = 0
 
-            dists.append(d1 + d2)
+            entries_index_dists.append(i5_index_dist + i7_index_dist)
 
-        index_min = min(range(len(dists)), key=dists.__getitem__)
-        # Test if two samples in the sheet is equidistant to the i5/i7
-        if len([i for i, j in enumerate(dists) if j == dists[index_min]]) > 1:
+        # Find the list idx of the minimum distance between the read's index and the indices of the samples in the sheet
+        entries_min_index_dist_loc = min(
+            range(len(entries_index_dists)), key=entries_index_dists.__getitem__
+        )
+        entry_min_index_dist = entries[entries_min_index_dist_loc]
+
+        # If several samples in the sheet are equidistant from the read, skip the read
+        if entries_index_dists.count(min(entries_index_dists)) > 1:
             continue
-        start_insert = min(i5["rend"], i7["rend"])
-        end_insert = max(i7["rstart"], i5["rstart"])
+
+        # Get the coordinates of the read insert
+        start_insert = min(i5_aln.read_end, i7_aln.read_end)
+        end_insert = max(i7_aln.read_start, i5_aln.read_start)
+
+        # If the read insert length is too short, skip the read
         if end_insert - start_insert < 10:
             continue
-        if dists[index_min] > max_distance:
-            # Find only full length i7(+i5) adaptor combos. Basically a list of "known unknowns"
-            if len(fi7) + len(fi5) == len(adaptor.i7.index_seq or "") + len(
-                adaptor.i5.index_seq or ""
-            ):
-                fi75 = "+".join([i for i in [fi7, fi5] if not i == ""])
+
+        # If the read is too far from the closest sample in the sheet
+        if entries_index_dists[entries_min_index_dist_loc] > max_distance:
+            # If the read has sensible lengths, add it to the unmatched beds
+            if len(i7_index_read) + len(i5_index_read) == len(
+                entry.adaptor.i7.index_seq or ""
+            ) + len(entry.adaptor.i5.index_seq or ""):
+                fi75 = "+".join(
+                    [i for i in [i7_index_read, i5_index_read] if not i == ""]
+                )
                 unmatched_bed.append([read, start_insert, end_insert, fi75, "999", "."])
-            continue
-        matched[read] = alignments
-        matched_bed.append(
-            [read, start_insert, end_insert, sample_adaptor[index_min][0], "999", "."]
-        )
-    log.debug(f" Matched {len(matched)} reads, unmatched {len(unmatched_bed)} reads")
+            # Otherwise, skip the read
+            else:
+                continue
+        else:
+            # Add the read to the matched beds
+            matched_bed.append(
+                [
+                    read,
+                    start_insert,
+                    end_insert,
+                    entry_min_index_dist.sample_name,
+                    "999",
+                    ".",
+                ]
+            )
+
+    log.debug(
+        f" Matched {len(matched_bed)} reads, unmatched {len(unmatched_bed)} reads"
+    )
+
     return unmatched_bed, matched_bed
 
 

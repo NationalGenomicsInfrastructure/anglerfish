@@ -30,9 +30,8 @@ class SampleSheet:
         fastq files are located in "barcode##" folders.
         """
 
-        self.samplesheet = []
-        try:
-            csvfile = open(input_csv)
+        self.rows = []
+        with open(input_csv) as csvfile:
             csv_first_line: str = csvfile.readline()
             dialect = csv.Sniffer().sniff(csv_first_line, ",;\t")
             csvfile.seek(0)
@@ -83,7 +82,7 @@ class SampleSheet:
                     row["fastq_path"],
                     ont_barcode,
                 )
-                self.samplesheet.append(ss_entry)
+                self.rows.append(ss_entry)
                 row_number += 1
 
             # Explanation: Don't mess around with the globs too much.
@@ -105,18 +104,13 @@ class SampleSheet:
                     + " please run anglerfish separately for each set."
                 )
 
-        except:
-            raise
-        finally:
-            csvfile.close()
-
     def minimum_bc_distance(self) -> int:
         """Compute the minimum edit distance between all barcodes in samplesheet,
         or within each ONT barcode group.
         """
 
         ont_bc_to_adaptors: dict = {}
-        for entry in self.samplesheet:
+        for entry in self.rows:
             if entry.ont_barcode in ont_bc_to_adaptors:
                 ont_bc_to_adaptors[entry.ont_barcode].append(entry.adaptor)
             else:
@@ -152,7 +146,7 @@ class SampleSheet:
 
     def get_fastastring(self, adaptor_name: str | None = None) -> str:
         fastas = {}
-        for entry in self.samplesheet:
+        for entry in self.rows:
             if entry.adaptor.name == adaptor_name or adaptor_name is None:
                 fastas[entry.adaptor.name + "_i7"] = entry.adaptor.i7.get_mask()
                 fastas[entry.adaptor.name + "_i5"] = entry.adaptor.i5.get_mask()
@@ -165,8 +159,35 @@ class SampleSheet:
 
         return outstr
 
+    def get_adaptor_barcode_sets(
+        self,
+    ) -> list[tuple[str, str | None]]:
+        """Return a set of unique adaptor-barcode pairings in the samplesheet."""
+
+        # Get a set corresponding to the unique pairings of adaptors and ONT barcodes in the samplesheet
+        adaptor_barcode_sets: list[tuple[str, str | None]] = list(
+            set([(row.adaptor.name, row.ont_barcode) for row in self.rows])
+        )
+
+        return adaptor_barcode_sets
+
+    def subset_rows(
+        self, adaptor_name: str, ont_barcode: str | None
+    ) -> list[SampleSheetEntry]:
+        """Return a subset of samplesheet rows based on logical criteria."""
+
+        subset_rows = []
+
+        for row in self.rows:
+            if row.adaptor.name == adaptor_name and ont_barcode == row.ont_barcode:
+                subset_rows.append(row)
+            else:
+                continue
+
+        return subset_rows
+
     def __iter__(self):
-        return iter(self.samplesheet)
+        return iter(self.rows)
 
     def __next__(self):
         pass

@@ -2,9 +2,9 @@ import argparse
 import datetime as dt
 import os
 from enum import Enum
+from importlib.metadata import version as get_version
 from typing import Optional
 
-import pkg_resources
 import typer
 from typing_extensions import Annotated
 
@@ -23,7 +23,7 @@ class IndexOrientations(str, Enum):
 
 def version_callback(value: bool):
     if value:
-        print(f'anglerfish {pkg_resources.get_distribution("bio-anglerfish").version}')
+        print(f'anglerfish {get_version("bio-anglerfish")}')
         raise typer.Exit()
 
 
