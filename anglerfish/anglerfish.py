@@ -282,7 +282,7 @@ def run_demux(args):
             closest_sample = min(sample_dists, key=lambda x: x[0])
             # If the distance is more than half the index length, we remove it
             if closest_sample[0] >= (len(i[0]) / 2) + 1:
-                closest_sample = (closest_sample[0], None)
+                top_unknowns.append([i[0], i[1], None])
             else:
                 # We might have two samples with the same distance
                 all_min = [
@@ -297,7 +297,9 @@ def run_demux(args):
                 if all_min:
                     closest_sample = (closest_sample[0], ";".join(all_min))
 
-            top_unknowns.append([i[0], i[1], closest_sample[1]])
+                top_unknowns.append(
+                    [i[0], i[1], f"{closest_sample[1]} ({closest_sample[0]})"]
+                )
         report.add_unmatched_stat(top_unknowns, ont_barcode, adaptor_name)
 
     # Check if there were samples in the samplesheet without adaptor alignments and add them to report
