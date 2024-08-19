@@ -1,4 +1,4 @@
-import importlib
+import importlib.resources as resources
 import os
 import re
 
@@ -247,7 +247,7 @@ def load_adaptors(raw: bool = False) -> list[Adaptor] | dict:
     """
 
     # Load adaptors from config file
-    adaptors_config_path = importlib.resources.files("anglerfish.config").joinpath(
+    adaptors_config_path = resources.files("anglerfish.config").joinpath(
         "adaptors.yaml"
     )
     assert isinstance(adaptors_config_path, os.PathLike)

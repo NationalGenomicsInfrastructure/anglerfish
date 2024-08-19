@@ -1,6 +1,6 @@
 # Anglerfish
 
-[![Anglerfish CI Status](https://github.com/remiolsen/anglerfish/workflows/Anglerfish/badge.svg)](https://github.com/remiolsen/anglerfish/actions)
+[![Anglerfish CI Status](https://github.com/NationalGenomicsInfrastructure/anglerfish/workflows/Anglerfish/badge.svg)](https://github.com/NationalGenomicsInfrastructure/anglerfish/actions)
 [![PyPI](https://img.shields.io/pypi/v/bio-anglerfish)](https://pypi.python.org/pypi/bio-anglerfish/)
 [![Conda (channel only)](https://img.shields.io/conda/vn/bioconda/anglerfish)](https://anaconda.org/bioconda/anglerfish)
 [![Docker Container available](https://img.shields.io/docker/automated/remiolsen/anglerfish.svg)](https://hub.docker.com/r/remiolsen/anglerfish/)
@@ -30,7 +30,7 @@ conda install -c bioconda anglerfish
 ### Install development version
 
 ```
-pip install --upgrade --force-reinstall git+https://github.com/remiolsen/anglerfish.git
+pip install --upgrade --force-reinstall git+https://github.com/NationalGenomicsInfrastructure/anglerfish.git
 ```
 
 ### For Arm64 processors (e.g. Apple M2)
@@ -53,7 +53,7 @@ Additionaly, if Docker is your cup of tea, the Dockerfile supplied in this repos
 For x86 processors (e.g. Intel/AMD):
 
 ```
-git clone https://github.com/remiolsen/anglerfish.git
+git clone https://github.com/NationalGenomicsInfrastructure/anglerfish.git
 cd anglerfish
 # Create a the anglerfish conda environment
 conda env create -f environment.yml
@@ -65,7 +65,7 @@ pip install -e ".[dev]"
 For Arm64 processors (e.g. Apple M1/M2). First [compile and install minimap2 manually](https://github.com/lh3/minimap2?tab=readme-ov-file#installation), then:
 
 ```
-git clone https://github.com/remiolsen/anglerfish.git
+git clone https://github.com/NationalGenomicsInfrastructure/anglerfish.git
 cd anglerfish
 # Create a the anglerfish conda environment (but remove minimap2)
 conda env create -f <(grep -v minimap2 environment.yml)

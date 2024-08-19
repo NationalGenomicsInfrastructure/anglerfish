@@ -18,7 +18,7 @@ from setuptools import find_packages, setup
 this_directory = Path(__file__).parent
 long_description = (this_directory / "README.md").read_text()
 
-version = "0.7.0dev0"
+version = "0.7.0"
 
 setup(
     name="bio-anglerfish",
@@ -28,7 +28,7 @@ setup(
     long_description_content_type="text/markdown",
     author="Remi-Andre Olsen",
     author_email="remi-andre.olsen@scilifelab.se",
-    url="https://github.com/remiolsen/anglerfish",
+    url="https://github.com/NationalGenomicsInfrastructure/anglerfish",
     license="MIT",
     python_requires=">=3.12",
     packages=find_packages(),
