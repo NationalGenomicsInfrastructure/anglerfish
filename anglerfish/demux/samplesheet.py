@@ -75,9 +75,10 @@ class SampleSheet:
                     sample_name,
                     Adaptor(
                         name=row["adaptors"],
-                        adaptors=ADAPTORS,
-                        i5_index=i5_index,
+                        i7_sequence_token=ADAPTORS[row["adaptors"]]["i7"],
+                        i5_sequence_token=ADAPTORS[row["adaptors"]]["i5"],
                         i7_index=i7_index,
+                        i5_index=i5_index,
                     ),
                     row["fastq_path"],
                     ont_barcode,

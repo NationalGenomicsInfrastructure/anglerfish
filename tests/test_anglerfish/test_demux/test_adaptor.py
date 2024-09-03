@@ -199,13 +199,17 @@ class TestAdaptor:
     def test_adaptor(self):
         adaptors = {
             "simple_and_index_umi": {
-                "i5": "AAA",
                 "i7": "AAA<N><U4>CCC",
+                "i5": "AAA",
             }
         }
 
         adaptor = to_test.Adaptor(
-            "simple_and_index_umi", adaptors, i5_index=None, i7_index="TTT"
+            "simple_and_index_umi",
+            i7_sequence_token=adaptors["simple_and_index_umi"]["i7"],
+            i5_sequence_token=adaptors["simple_and_index_umi"]["i5"],
+            i7_index="TTT",
+            i5_index=None,
         )
         assert adaptor.name == "simple_and_index_umi"
         assert isinstance(adaptor.i5, to_test.AdaptorPart)
