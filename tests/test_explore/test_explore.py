@@ -6,7 +6,7 @@ import pytest
 
 from anglerfish.demux.adaptor import Adaptor
 from anglerfish.explore.explore import (
-    _run_explore,
+    get_explore_results,
     run_multiple_alignments,
     setup_explore_directory,
 )
@@ -187,14 +187,14 @@ def test_run_multiple_alignments(explore_fixture):
     tmp_dir.cleanup()
 
 
-def test_run_explore_functional_test(explore_fixture):
+def test_get_explore_results_functional_test(explore_fixture):
     """Test overall function of the explore command."""
     tmp_dir = tempfile.TemporaryDirectory()
     tmp_path = os.path.join(tmp_dir.name, "outdir")
 
     # Running with 2 reads, one perfect match to illumina_ud, one partial match to illumina_ud
     results, adaptors_included, entries, umi_threshold, kmer_length, outdir = (
-        _run_explore(
+        get_explore_results(
             fastq=explore_fixture["explore_reads"],
             outdir=tmp_path,
             threads=1,

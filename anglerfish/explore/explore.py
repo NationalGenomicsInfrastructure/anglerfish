@@ -28,7 +28,7 @@ def run_explore(
     kmer_length: int,
 ):
     results, adaptors_included, entries, umi_threshold, kmer_length, outdir = (
-        _run_explore(
+        get_explore_results(
             fastq,
             outdir,
             threads,
@@ -55,7 +55,7 @@ def run_explore(
     log.info(f"Results saved to {explore_stats_file}")
 
 
-def _run_explore(
+def get_explore_results(
     fastq: str,
     outdir: str,
     threads: int,
