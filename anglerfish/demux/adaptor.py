@@ -18,16 +18,17 @@ class Adaptor:
     def __init__(
         self,
         name: str,
-        adaptors: dict,
+        i7_sequence_token: str,
+        i5_sequence_token: str,
         i7_index: str | None = None,
         i5_index: str | None = None,
     ):
         self.name: str = name
-        self.i5 = AdaptorPart(
-            sequence_token=adaptors[name]["i5"], name=name, index_seq=i5_index
-        )
         self.i7 = AdaptorPart(
-            sequence_token=adaptors[name]["i7"], name=name, index_seq=i7_index
+            sequence_token=i7_sequence_token, name=name, index_seq=i7_index
+        )
+        self.i5 = AdaptorPart(
+            sequence_token=i5_sequence_token, name=name, index_seq=i5_index
         )
 
     def get_fastastring(self, insert_Ns: bool = True) -> str:
@@ -265,6 +266,12 @@ def load_adaptors(raw: bool = False) -> list[Adaptor] | dict:
     # By default, return list of Adaptor objects
     else:
         adaptors = []
-        for adaptor_name in adaptors_dict:
-            adaptors.append(Adaptor(name=adaptor_name, adaptors=adaptors_dict))
+        for adaptor_name, adaptor_parts_dict in adaptors_dict.items():
+            adaptors.append(
+                Adaptor(
+                    name=adaptor_name,
+                    i7_sequence_token=adaptor_parts_dict["i7"],
+                    i5_sequence_token=adaptor_parts_dict["i5"],
+                )
+            )
         return adaptors

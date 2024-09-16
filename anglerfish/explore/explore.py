@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 import uuid
@@ -26,55 +27,100 @@ def run_explore(
     umi_threshold: float,
     kmer_length: int,
 ):
-    # Setup a run directory
-    run_uuid = str(uuid.uuid4())
-    try:
-        os.mkdir(outdir)
-    except FileExistsError:
-        log.info(f"Output directory {outdir} already exists")
-        if not use_existing:
-            log.error(
-                f"Output directory {outdir} already exists, please use --use_existing to continue"
-            )
-            exit(1)
-        else:
-            pass
+    results, adaptors_included, entries, umi_threshold, kmer_length, outdir = (
+        get_explore_results(
+            fastq,
+            outdir,
+            threads,
+            use_existing,
+            good_hit_threshold,
+            insert_thres_low,
+            insert_thres_high,
+            minimap_b,
+            min_hits_per_adaptor,
+            umi_threshold,
+            kmer_length,
+        )
+    )
 
+    results = check_for_umis(
+        results, adaptors_included, entries, umi_threshold, kmer_length, outdir
+    )
+
+    explore_stats_file = os.path.join(outdir, "anglerfish_explore_stats.json")
+    # Save results to a JSON file
+    with open(explore_stats_file, "w") as f:
+        json.dump(results, f, indent=4)
+
+    log.info(f"Results saved to {explore_stats_file}")
+
+
+def get_explore_results(
+    fastq: str,
+    outdir: str,
+    threads: int,
+    use_existing: bool,
+    good_hit_threshold: float,
+    insert_thres_low: int,
+    insert_thres_high: int,
+    minimap_b: int,
+    min_hits_per_adaptor: int,
+    umi_threshold: float,
+    kmer_length: int,
+):
+    run_uuid = str(uuid.uuid4())
     log.info("Running anglerfish explore")
     log.info(f"Run uuid {run_uuid}")
 
+    setup_explore_directory(outdir, use_existing)
+
+    # Create a results dictionary which is the skeleton for json output
+    results = {
+        "run_uuid": run_uuid,
+        "timestamp": pd.Timestamp.now().isoformat(),
+        "parameters": {
+            "fastq": fastq,
+            "outdir": outdir,
+            "threads": threads,
+            "use_existing": use_existing,
+            "good_hit_threshold": good_hit_threshold,
+            "insert_thres_low": insert_thres_low,
+            "insert_thres_high": insert_thres_high,
+            "minimap_b": minimap_b,
+            "min_hits_per_adaptor": min_hits_per_adaptor,
+            "umi_threshold": umi_threshold,
+            "kmer_length": kmer_length,
+        },
+        "included_adaptors": {},
+        "excluded_adaptors": {},
+    }
+
     adaptors = cast(list[Adaptor], load_adaptors())
-    adaptors_and_aln_paths: list[tuple[Adaptor, str]] = []
 
-    # Map all reads against all adaptors
-    for adaptor in adaptors:
-        # Align
-        aln_path = os.path.join(outdir, f"{adaptor.name}.paf")
-        adaptors_and_aln_paths.append((adaptor, aln_path))
-        if os.path.exists(aln_path) and use_existing:
-            log.info(f"Skipping {adaptor.name} as alignment already exists")
-            continue
-        adaptor_path = os.path.join(outdir, f"{adaptor.name}.fasta")
-        with open(adaptor_path, "w") as f:
-            f.write(adaptor.get_fastastring(insert_Ns=False))
-
-        log.info(f"Aligning {adaptor.name}")
-        run_minimap2(
-            fastq_in=fastq,
-            index_file=adaptor_path,
-            output_paf=aln_path,
-            threads=threads,
-            minimap_b=minimap_b,
-        )
+    adaptors_and_aln_paths = run_multiple_alignments(
+        fastq,
+        outdir,
+        threads,
+        use_existing,
+        adaptors,
+        minimap_b,
+    )
 
     # Parse alignments
     entries: dict = {}
     adaptors_included = []
     for adaptor, aln_path in adaptors_and_aln_paths:
         log.info(f"Parsing {adaptor.name}")
+        adaptor_data = {"name": adaptor.name, "i5": {}, "i7": {}}
         reads_alns: dict[str, list[Alignment]] = map_reads_to_alns(
             aln_path, complex_identifier=True
         )
+
+        if len(reads_alns) == 0:
+            log.info(
+                f"No hits for {adaptor.name} in alignment file (perhaps the read file was mis-formatted?)"
+            )
+            continue
 
         # Choose only the highest scoring alignment for each combination of read, adaptor end and strand
         reads_to_highest_q_aln_dict: dict[str, dict] = {}
@@ -130,8 +176,16 @@ def run_explore(
                 )
                 df_good_hits = df_mim[requirements]
 
-                median_insert_length = df_good_hits["insert_len"].median()
                 insert_lengths = df_good_hits["insert_len"].value_counts()
+
+                if len(insert_lengths) == 0:
+                    median_insert_length = None
+                    insert_lengths_histogram = {}
+                else:
+                    median_insert_length = df_good_hits["insert_len"].median()
+                    insert_lengths_histogram = insert_lengths[
+                        sorted(insert_lengths.index)
+                    ].to_dict()
             else:
                 m_re_cs = r"^cs:Z::([1-9][0-9]*)$"
                 df_good_hits = df[df.cg.str.match(m_re_cs)]
@@ -148,6 +202,7 @@ def run_explore(
                 df_good_hits = df_good_hits[df_good_hits["match_1_len"] >= thres]
 
                 median_insert_length = None
+                insert_lengths_histogram = {}
                 insert_lengths = None
 
             # Filter multiple hits per read and adaptor end
@@ -164,46 +219,96 @@ def run_explore(
                 f"{adaptor.name}:{adaptor_end_name} had {len(df_good_hits)} good hits."
             )
 
+            # Collect data for the results dictionary
+            adaptor_data[adaptor_end_name] = {
+                "nr_good_hits": len(df_good_hits),
+                "index_length": median_insert_length,
+                "insert_lengths_histogram": insert_lengths_histogram,
+                "relative_entropy": {},
+            }
+
         if min(nr_good_hits.values()) >= min_hits_per_adaptor:
             log.info(f"Adaptor {adaptor.name} is included in the analysis")
+            results["included_adaptors"][adaptor.name] = adaptor_data
             adaptors_included.append(adaptor)
         else:
+            results["excluded_adaptors"][adaptor.name] = adaptor_data
             log.info(f"Adaptor {adaptor.name} is excluded from the analysis")
 
-    # Print insert length info for adaptor types included in the analysis
+    return results, adaptors_included, entries, umi_threshold, kmer_length, outdir
+
+
+def setup_explore_directory(outdir: str, use_existing: bool):
+    # Setup a run directory
+
+    try:
+        os.mkdir(outdir)
+    except FileExistsError:
+        log.info(f"Output directory {outdir} already exists")
+        if not use_existing:
+            log.error(
+                f"Output directory {outdir} already exists, please use --use_existing to continue"
+            )
+            exit(1)
+        else:
+            pass
+
+
+def run_multiple_alignments(
+    fastq: str,
+    outdir: str,
+    threads: int,
+    use_existing: bool,
+    adaptors: list[Adaptor],
+    minimap_b: int,
+) -> list[tuple[Adaptor, str]]:
+    adaptors_and_aln_paths: list[tuple[Adaptor, str]] = []
+
+    # Map all reads against all adaptors
+    for adaptor in adaptors:
+        # Align
+        aln_path = os.path.join(outdir, f"{adaptor.name}.paf")
+        adaptors_and_aln_paths.append((adaptor, aln_path))
+        if os.path.exists(aln_path) and use_existing:
+            log.info(f"Skipping {adaptor.name} as alignment already exists")
+            continue
+        adaptor_path = os.path.join(outdir, f"{adaptor.name}.fasta")
+        with open(adaptor_path, "w") as f:
+            f.write(adaptor.get_fastastring(insert_Ns=False))
+
+        log.info(f"Aligning {adaptor.name}")
+        run_minimap2(
+            fastq_in=fastq,
+            index_file=adaptor_path,
+            output_paf=aln_path,
+            threads=threads,
+            minimap_b=minimap_b,
+        )
+    return adaptors_and_aln_paths
+
+
+def check_for_umis(
+    results, adaptors_included, entries, umi_threshold, kmer_length, outdir
+):
+    # Traverse the adaptors to include and check whether they need UMI entropy analysis
     for adaptor in adaptors_included:
+        adaptor_data = results["included_adaptors"][adaptor.name]
+
         for adaptor_end_name, adaptor_end in zip(
             ["i5", "i7"], [adaptor.i5, adaptor.i7]
         ):
             df_good_hits = entries[adaptor.name][adaptor_end_name]
             if adaptor_end.has_index:
                 median_insert_length = df_good_hits["insert_len"].median()
+
                 if median_insert_length > umi_threshold:
                     # Calculate entropies here
                     entropies = calculate_relative_entropy(
                         df_good_hits, kmer_length, median_insert_length
                     )
-                    entropy_file = os.path.join(
-                        outdir, f"{adaptor.name}_{adaptor_end_name}.entropy.csv"
-                    )
-                    pd.Series(entropies).to_csv(entropy_file, float_format="%.2f")
-                    log.info(
-                        f"{adaptor.name}:{adaptor_end_name}, relative entropy for k={kmer_length}, over the index saved to {entropy_file}"
-                    )
-                insert_lengths = df_good_hits["insert_len"].value_counts()
+                    adaptor_data[adaptor_end_name]["relative_entropy"] = entropies
                 log.info(
                     f"{adaptor.name}:{adaptor_end_name} had {len(df_good_hits)} good hits with median insert length {median_insert_length}"
                 )
-                histogram_file = os.path.join(
-                    outdir, f"{adaptor.name}_{adaptor_end_name}.hist.csv"
-                )
-                insert_lengths[sorted(insert_lengths.index)].to_csv(histogram_file)
-                log.info(
-                    f"{adaptor.name}:{adaptor_end_name} insert length histogram saved {histogram_file}"
-                )
-            else:
-                median_insert_length = None
-                insert_lengths = None
-                log.info(
-                    f"{adaptor.name}:{adaptor_end_name} had {len(df_good_hits)} good hits (no insert length since no index)"
-                )
+
+    return results
