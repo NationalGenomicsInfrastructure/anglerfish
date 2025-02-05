@@ -11,14 +11,7 @@ version = "0.7.0"
 
 # -- General configuration
 
-extensions = [
-    "sphinx.ext.duration",
-    "myst_parser",
-    "sphinx.ext.doctest",
-    "sphinx.ext.autodoc",
-    "sphinx.ext.autosummary",
-    "sphinx.ext.intersphinx",
-]
+extensions = ["myst_parser"]
 
 master_doc = "index"
 source_suffix = [".rst", ".md"]
