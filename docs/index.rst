@@ -9,7 +9,7 @@ Contents
 
 .. toctree::
 
-   usage
-   anglerfish run
-   anglerfish explore
+   anglerfish
+   anglerfish-run
+   anglerfish-explore
    troubleshooting

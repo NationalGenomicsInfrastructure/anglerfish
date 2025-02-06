@@ -3,7 +3,7 @@
 # -- Project information
 
 project = "Anglerfish"
-copyright = "MIT"
+copyright = "MIT license"
 author = "Anglerfish Developers"
 
 release = "0.7"
