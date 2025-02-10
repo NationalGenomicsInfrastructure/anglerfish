@@ -12,4 +12,3 @@ Contents
    anglerfish
    anglerfish-run
    anglerfish-explore
-   troubleshooting
