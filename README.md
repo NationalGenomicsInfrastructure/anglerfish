@@ -11,7 +11,7 @@ Anglerfish is a tool designed to demultiplex Illumina libraries sequenced on Oxf
 flowcells. The primary purpose for this would be to do QC, i.e. to check pool balancing, assess
 contamination, library insert sizes and so on.
 
-For more information on how this can be used, please see this [poster](docs/AGBT_poster_20200214.pdf).
+For more information please read the [documentation](https://anglerfish-dev.readthedocs.io/en/latest/index.html) or see this [poster](docs/AGBT_poster_20200214.pdf).
 
 ## Installation
 
